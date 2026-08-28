@@ -37,6 +37,14 @@ sudo chmod 600 /etc/love-connect.env
 
 ### ۳. نصب سرویس و nginx
 
+اول مسیر node را چک کن — یونیت پیش‌فرض `/usr/bin/node` را صدا می‌زند و روی
+سرورهایی که node با nvm نصب شده مسیر فرق دارد:
+
+```bash
+which node        # اگر /usr/bin/node نبود، ExecStart را در فایل service عوض کن
+```
+
+
 ```bash
 sudo mkdir -p /var/lib/love-connect
 sudo cp deploy/love-connect.service /etc/systemd/system/
@@ -85,6 +93,10 @@ sudo sqlite3 /var/lib/love-connect/app.db ".backup /root/love-connect-$(date +%F
 چون Cloudflare جلوی سایت است، مرورگر HTTPS می‌بیند و مشکلی نیست — ولی حالت SSL
 در Cloudflare باید **Full** باشد، نه Flexible، وگرنه ممکن است حلقهٔ ریدایرکت
 بخوری.
+
+**سرویس بالا نمی‌آید؟** اول `journalctl -u love-connect -n 50` را ببین.
+دو علت رایج: مسیر اشتباه node در `ExecStart`، و نبودن `.next/standalone/server.js`
+(که `deploy.sh` خودش قبلش گیر می‌دهد).
 
 **پورت.** اگر ۳۰۰۱ روی سرور اشغال است (`sudo ss -tlnp | grep 3001`)، هم در
 `deploy/love-connect.service` و هم در `deploy/nginx-love-connect.conf` عوضش کن.

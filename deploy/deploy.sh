@@ -71,6 +71,21 @@ if [[ "$SKIP_SYSTEMD" == "1" ]]; then
   exit 0
 fi
 
+echo "==> بررسی مسیر node در یونیت systemd"
+# مسیر node روی هر سرور یکی نیست (nvm آن را جای دیگری می‌گذارد).
+# اگر ExecStart به مسیری اشاره کند که وجود ندارد، سرویس بی‌صدا بالا نمی‌آید.
+UNIT_FILE="/etc/systemd/system/${SERVICE}.service"
+if [[ -f "$UNIT_FILE" ]]; then
+  UNIT_NODE="$(awk -F'ExecStart=' '/^ExecStart=/{print $2}' "$UNIT_FILE" | awk '{print $1}')"
+  REAL_NODE="$(command -v node || true)"
+  if [[ -n "$UNIT_NODE" && ! -x "$UNIT_NODE" ]]; then
+    echo "خطا: یونیت به $UNIT_NODE اشاره می‌کند ولی چنین فایلی اجرایی نیست." >&2
+    echo "node واقعی اینجاست: ${REAL_NODE:-پیدا نشد}" >&2
+    echo "ExecStart را در $UNIT_FILE اصلاح کن و systemctl daemon-reload بزن." >&2
+    exit 1
+  fi
+fi
+
 echo "==> تنظیم مالکیت"
 chown -R "$APP_USER:$APP_USER" "$APP_DIR" "$DATA_DIR"
 chmod 640 "$DATA_DIR"/app.db 2>/dev/null || true
