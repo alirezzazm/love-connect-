@@ -1,0 +1,40 @@
+# systemd unit — کپی به /etc/systemd/system/love-connect.service
+#
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable --now love-connect
+#   sudo systemctl status love-connect
+#   journalctl -u love-connect -f
+
+[Unit]
+Description=Love Connect — date invitation app
+After=network.target
+
+[Service]
+Type=simple
+User=www-data
+Group=www-data
+
+WorkingDirectory=/var/www/love-connect/.next/standalone
+ExecStart=/usr/bin/node server.js
+Restart=always
+RestartSec=5
+
+# پورت ۳۰۰۰ برای اپ فعلی (فروشگاه) است، پس این یکی روی ۳۰۰۱ می‌نشیند
+Environment=NODE_ENV=production
+Environment=PORT=3001
+Environment=HOSTNAME=127.0.0.1
+
+# رمزها و کلیدها اینجا نوشته نمی‌شوند؛ از فایل جدا خوانده می‌شوند.
+# فایل باید chmod 600 و مالکش root باشد.
+EnvironmentFile=/etc/love-connect.env
+
+# سخت‌گیری‌های امنیتی
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+# تنها جایی که اپ اجازهٔ نوشتن دارد: فایل دیتابیس
+ReadWritePaths=/var/lib/love-connect
+
+[Install]
+WantedBy=multi-user.target
