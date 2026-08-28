@@ -42,7 +42,13 @@ function formatPersianDate(value: string) {
 }
 
 export default function InviteFlow({ invite }: { invite: FlowInvite }) {
-  const arenaRef = useRef<HTMLDivElement>(null);
+  const cardRef = useRef<HTMLDivElement>(null);
+  /**
+   * زمان آخرین جاخالیِ دکمهٔ «نه». چون «نه» کنار «بله» می‌ماند، وقتی کنار
+   * می‌کشد ممکن است همان کلیک روی «بله» بنشیند. کلیک‌های بلافاصله بعد از
+   * جاخالی نادیده گرفته می‌شوند تا «بله» فقط عمدی زده شود.
+   */
+  const lastDodgeAt = useRef(0);
 
   const [stage, setStage] = useState<"ask" | "questions" | "done">("ask");
   const [index, setIndex] = useState(0);
@@ -109,11 +115,11 @@ export default function InviteFlow({ invite }: { invite: FlowInvite }) {
 
   if (stage === "ask") {
     return (
-      <div
-        ref={arenaRef}
-        className="relative grid min-h-dvh place-items-center overflow-hidden px-5 py-10"
-      >
-        <div className={`${card} animate-pop-in text-center`}>
+      <div className="grid min-h-dvh place-items-center px-5 py-10">
+        <div
+          ref={cardRef}
+          className={`${card} animate-pop-in relative overflow-hidden text-center`}
+        >
           <p className="text-sm text-white/55">
             {invite.recipientName} عزیز، {invite.senderName} برایت نوشته:
           </p>
@@ -126,7 +132,10 @@ export default function InviteFlow({ invite }: { invite: FlowInvite }) {
           <div className="mt-6 flex flex-wrap items-center justify-center gap-4">
             <button
               type="button"
-              onClick={() => setStage("questions")}
+              onClick={() => {
+                if (Date.now() - lastDodgeAt.current < 350) return;
+                setStage("questions");
+              }}
               className="rounded-full bg-gradient-to-br from-blush to-blush-deep px-8 py-3.5 text-lg font-bold text-white shadow-lg shadow-blush/30 transition-transform"
               style={{ transform: `scale(${yesScale})` }}
             >
@@ -135,8 +144,11 @@ export default function InviteFlow({ invite }: { invite: FlowInvite }) {
 
             <RunawayNo
               label="نه"
-              boundsRef={arenaRef}
-              onDodge={() => setDodges((d) => d + 1)}
+              boundsRef={cardRef}
+              onDodge={() => {
+                lastDodgeAt.current = Date.now();
+                setDodges((d) => d + 1);
+              }}
             />
           </div>
         </div>
