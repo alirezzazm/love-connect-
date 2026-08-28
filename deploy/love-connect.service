@@ -33,8 +33,9 @@ NoNewPrivileges=true
 PrivateTmp=true
 ProtectSystem=strict
 ProtectHome=true
-# تنها جایی که اپ اجازهٔ نوشتن دارد: فایل دیتابیس
+# تنها جاهایی که اپ اجازهٔ نوشتن دارد: فایل دیتابیس و کش Next
 ReadWritePaths=/var/lib/love-connect
+ReadWritePaths=/var/www/love-connect/.next
 
 [Install]
 WantedBy=multi-user.target
