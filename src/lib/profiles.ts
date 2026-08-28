@@ -1,0 +1,108 @@
+import type { Profile } from "./types";
+
+/**
+ * دادهٔ نمونه. پروژه فقط فرانت‌اند است، پس هیچ بک‌اندی در کار نیست و
+ * همهٔ پروفایل‌ها از همین‌جا خوانده می‌شوند.
+ */
+export const PROFILES: Profile[] = [
+  {
+    id: "p1",
+    name: "نگار",
+    age: 26,
+    city: "تهران",
+    gender: "female",
+    job: "طراح رابط کاربری",
+    bio: "عاشق پیاده‌روی شبانه و کافه‌های خلوت. اگر کتاب خوبی دستت هست، بگو.",
+    interests: ["کتاب", "قهوه", "طراحی", "سفر"],
+    colors: ["#f472b6", "#a855f7"],
+    likesYouBack: true,
+  },
+  {
+    id: "p2",
+    name: "سارا",
+    age: 29,
+    city: "اصفهان",
+    gender: "female",
+    job: "پزشک عمومی",
+    bio: "آخر هفته‌ها کوه، وسط هفته فیلم. یک‌جانشین نیستم.",
+    interests: ["کوهنوردی", "سینما", "آشپزی"],
+    colors: ["#fb7185", "#f59e0b"],
+    likesYouBack: false,
+  },
+  {
+    id: "p3",
+    name: "آرش",
+    age: 31,
+    city: "شیراز",
+    gender: "male",
+    job: "برنامه‌نویس",
+    bio: "گیتار می‌زنم، بد. ولی قهوه‌ام حرف ندارد.",
+    interests: ["موسیقی", "برنامه‌نویسی", "دوچرخه"],
+    colors: ["#38bdf8", "#6366f1"],
+    likesYouBack: true,
+  },
+  {
+    id: "p4",
+    name: "مهسا",
+    age: 24,
+    city: "تبریز",
+    gender: "female",
+    job: "دانشجوی معماری",
+    bio: "دنبال کسی که ساعت دو نصف‌شب دربارهٔ ساختمان‌ها حرف بزند.",
+    interests: ["معماری", "عکاسی", "گربه"],
+    colors: ["#34d399", "#0ea5e9"],
+    likesYouBack: true,
+  },
+  {
+    id: "p5",
+    name: "کیان",
+    age: 28,
+    city: "تهران",
+    gender: "male",
+    job: "معلم موسیقی",
+    bio: "سه‌تار می‌زنم و فکر می‌کنم هر آدمی یک آهنگ مخصوص خودش دارد.",
+    interests: ["موسیقی", "شعر", "پیاده‌روی"],
+    colors: ["#c084fc", "#ec4899"],
+    likesYouBack: false,
+  },
+  {
+    id: "p6",
+    name: "الهام",
+    age: 27,
+    city: "مشهد",
+    gender: "female",
+    job: "مترجم",
+    bio: "روزی سه فنجان چای و یک فصل رمان. بقیه‌اش قابل مذاکره است.",
+    interests: ["ادبیات", "چای", "زبان"],
+    colors: ["#f97316", "#ef4444"],
+    likesYouBack: true,
+  },
+  {
+    id: "p7",
+    name: "پویا",
+    age: 33,
+    city: "کرج",
+    gender: "male",
+    job: "عکاس",
+    bio: "جاده را بیشتر از مقصد دوست دارم. دوربینم همیشه همراهم است.",
+    interests: ["عکاسی", "سفر", "طبیعت"],
+    colors: ["#22d3ee", "#3b82f6"],
+    likesYouBack: false,
+  },
+  {
+    id: "p8",
+    name: "رها",
+    age: 25,
+    city: "رشت",
+    gender: "female",
+    job: "بازاریاب دیجیتال",
+    bio: "شمال بزرگ شدم، باران برایم عادی است نه رمانتیک. ولی خب، رمانتیک هم هست.",
+    interests: ["موسیقی", "دریا", "سگ"],
+    colors: ["#a3e635", "#14b8a6"],
+    likesYouBack: true,
+  },
+];
+
+export function getProfile(id: string): Profile | undefined {
+  return PROFILES.find((p) => p.id === id);
+}
