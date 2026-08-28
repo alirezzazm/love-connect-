@@ -47,6 +47,17 @@ npx prisma db push
 echo "==> بیلد"
 npm run build
 
+echo "==> بررسی خروجی standalone"
+# اگر ریشهٔ ردیابی درست تنظیم نشده باشد، Next خروجی را تو در تو می‌سازد و
+# systemd سر جای انتظاری چیزی پیدا نمی‌کند. همین‌جا بلند اعتراض می‌کنیم.
+if [[ ! -f .next/standalone/server.js ]]; then
+  echo "خطا: .next/standalone/server.js ساخته نشد." >&2
+  echo "جایی که پیدا شد:" >&2
+  find .next/standalone -maxdepth 4 -name server.js >&2 || true
+  echo "outputFileTracingRoot را در next.config.ts بررسی کن." >&2
+  exit 1
+fi
+
 echo "==> جابه‌جایی فایل‌های استاتیک به خروجی standalone"
 # خروجی standalone این دو را خودش کپی نمی‌کند. پاک کردن مقصد لازم است،
 # وگرنه اجرای دوباره پوشه را تودرتو می‌سازد (.next/static/static).
