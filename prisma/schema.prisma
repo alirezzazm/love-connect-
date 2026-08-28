@@ -1,0 +1,67 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+/// یک دعوت‌نامه = یک نفر. برای هر نفر یک لینک جدا ساخته می‌شود.
+model Invite {
+  id            String   @id @default(cuid())
+  /// بخش پایانی لینک: /d/<slug>
+  slug          String   @unique
+  /// اسم کسی که دعوت می‌شود
+  recipientName String
+  /// اسم خودِ دعوت‌کننده
+  senderName    String
+  /// سؤال اول که با دکمهٔ فراری «نه» نشان داده می‌شود
+  headline      String
+  /// پیام پایانی بعد از تمام شدن مراحل
+  closingNote   String
+  /// اگر خاموش باشد لینک دیگر کار نمی‌کند
+  active        Boolean  @default(true)
+  /// چند بار لینک باز شده
+  views         Int      @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  questions Question[]
+  response  Response?
+
+  @@index([createdAt])
+}
+
+/// سؤال‌های بعد از «بله». متن و گزینه‌هایشان از پنل ادمین قابل تغییر است.
+model Question {
+  id       String @id @default(cuid())
+  inviteId String
+  invite   Invite @relation(fields: [inviteId], references: [id], onDelete: Cascade)
+
+  /// ترتیب نمایش، از ۰
+  step   Int
+  /// "choice" یعنی انتخاب از گزینه‌ها، "datetime" یعنی انتخاب روز و ساعت
+  type   String @default("choice")
+  prompt String
+  /// آرایهٔ JSON از گزینه‌ها؛ برای نوع datetime خالی می‌ماند
+  options String @default("[]")
+
+  @@index([inviteId, step])
+}
+
+/// جوابی که گیرندهٔ دعوت داده است. هر دعوت حداکثر یک جواب دارد و
+/// اگر دوباره جواب بدهد همان رکورد به‌روز می‌شود.
+model Response {
+  id       String @id @default(cuid())
+  inviteId String @unique
+  invite   Invite @relation(fields: [inviteId], references: [id], onDelete: Cascade)
+
+  /// آرایهٔ JSON: [{ step, prompt, answer }]
+  answers String
+  /// چند بار تلاش کرد روی «نه» کلیک کند و دکمه فرار کرد
+  dodges  Int @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}

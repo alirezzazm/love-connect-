@@ -1,127 +1,57 @@
-"use client";
-
-import { useMemo, useState } from "react";
 import Link from "next/link";
-import SwipeCard from "@/components/SwipeCard";
-import Avatar from "@/components/Avatar";
-import { PROFILES } from "@/lib/profiles";
-import type { Decision, Profile } from "@/lib/types";
-import { useApp } from "@/store/useApp";
 
-export default function DiscoverPage() {
-  const decisions = useApp((s) => s.decisions);
-  const decide = useApp((s) => s.decide);
-  const resetAll = useApp((s) => s.resetAll);
-  const [matched, setMatched] = useState<Profile | null>(null);
+const STEPS = [
+  {
+    title: "دعوت را بساز",
+    body: "توی پنل ادمین اسم طرف، متن سؤال و گزینه‌ها را می‌نویسی.",
+  },
+  {
+    title: "لینک را بفرست",
+    body: "برای هر نفر یک لینک اختصاصی ساخته می‌شود.",
+  },
+  {
+    title: "جوابش را ببین",
+    body: "هرچه انتخاب کرده، توی پنل برایت ثبت می‌شود.",
+  },
+];
 
-  const deck = useMemo(
-    () => PROFILES.filter((p) => !decisions[p.id]),
-    [decisions]
-  );
-
-  const handle = (profile: Profile, decision: Decision) => {
-    const isMatch = decide(profile.id, decision);
-    if (isMatch) setMatched(profile);
-  };
-
-  const top = deck[0];
-
+export default function HomePage() {
   return (
-    <div className="px-4 pt-6">
-      <header className="mb-5 flex items-center justify-between">
-        <h1 className="text-2xl font-black">
-          لاو<span className="text-blush">کانکت</span>
+    <main className="grid min-h-dvh place-items-center px-6 py-16">
+      <div className="w-full max-w-xl text-center">
+        <p className="text-6xl">🌹</p>
+        <h1 className="mt-6 text-4xl font-black leading-tight sm:text-5xl">
+          دعوت به قرار
         </h1>
-        <span className="text-xs text-white/50">
-          {deck.length} پروفایل باقی مانده
-        </span>
-      </header>
+        <p className="mt-4 text-base leading-8 text-white/70">
+          یک لینک کوچک بساز و بفرست. آن طرف خط، دکمهٔ «نه» اجازهٔ کلیک شدن
+          نمی‌دهد — و بعد با هم تصمیم می‌گیرید کجا بروید، چه بخورید و کِی.
+        </p>
 
-      <div className="relative h-[62vh] min-h-[420px]">
-        {deck.length === 0 ? (
-          <div className="grid h-full place-content-center gap-4 rounded-3xl border border-dashed border-white/15 p-6 text-center">
-            <p className="text-lg font-bold">فعلاً پروفایل تازه‌ای نمانده</p>
-            <p className="text-sm text-white/60">
-              سری به مچ‌هایت بزن یا از اول شروع کن.
-            </p>
-            <div className="flex justify-center gap-3">
-              <Link
-                href="/matches"
-                className="rounded-full bg-blush px-5 py-2 text-sm font-bold text-white"
-              >
-                مچ‌ها
-              </Link>
-              <button
-                onClick={resetAll}
-                className="rounded-full border border-white/20 px-5 py-2 text-sm"
-              >
-                شروع دوباره
-              </button>
-            </div>
-          </div>
-        ) : (
-          deck
-            .slice(0, 3)
-            .reverse()
-            .map((profile) => {
-              const depth = deck.indexOf(profile);
-              return (
-                <SwipeCard
-                  key={profile.id}
-                  profile={profile}
-                  depth={depth}
-                  interactive={depth === 0}
-                  onDecide={(decision) => handle(profile, decision)}
-                />
-              );
-            })
-        )}
+        <ol className="mt-10 flex flex-col gap-3 text-start">
+          {STEPS.map((step, i) => (
+            <li
+              key={step.title}
+              className="flex gap-4 rounded-2xl border border-white/12 bg-white/5 p-4"
+            >
+              <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-blush/20 text-sm font-bold text-blush">
+                {i + 1}
+              </span>
+              <div>
+                <p className="font-bold">{step.title}</p>
+                <p className="mt-1 text-sm text-white/60">{step.body}</p>
+              </div>
+            </li>
+          ))}
+        </ol>
+
+        <Link
+          href="/admin"
+          className="mt-10 inline-block rounded-full bg-gradient-to-br from-blush to-blush-deep px-8 py-3.5 font-bold text-white shadow-lg shadow-blush/25"
+        >
+          ورود به پنل
+        </Link>
       </div>
-
-      {top && (
-        <div className="mt-6 flex items-center justify-center gap-6">
-          <button
-            onClick={() => handle(top, "pass")}
-            aria-label="رد کردن"
-            className="grid h-16 w-16 place-items-center rounded-full border border-white/15 bg-white/5 text-2xl transition hover:bg-white/10"
-          >
-            ✕
-          </button>
-          <button
-            onClick={() => handle(top, "like")}
-            aria-label="پسندیدن"
-            className="grid h-20 w-20 place-items-center rounded-full bg-gradient-to-br from-blush to-blush-deep text-3xl shadow-lg shadow-blush/30 transition hover:scale-105"
-          >
-            ❤
-          </button>
-        </div>
-      )}
-
-      {matched && (
-        <div className="fixed inset-0 z-50 grid place-items-center bg-black/70 p-6 backdrop-blur-sm">
-          <div className="animate-pop-in w-full max-w-sm rounded-3xl border border-white/15 bg-ink-soft p-6 text-center">
-            <Avatar profile={matched} size={88} className="mx-auto" />
-            <h2 className="mt-4 text-2xl font-black text-blush">مچ شدید!</h2>
-            <p className="mt-2 text-sm text-white/75">
-              تو و {matched.name} همدیگر را پسندیدید.
-            </p>
-            <div className="mt-6 flex gap-3">
-              <Link
-                href={`/chat/${matched.id}`}
-                className="flex-1 rounded-full bg-blush py-3 text-sm font-bold text-white"
-              >
-                شروع گفتگو
-              </Link>
-              <button
-                onClick={() => setMatched(null)}
-                className="flex-1 rounded-full border border-white/20 py-3 text-sm"
-              >
-                ادامهٔ کشف
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
+    </main>
   );
 }
