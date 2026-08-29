@@ -153,26 +153,77 @@ jobs:
           ssh -i ~/.ssh/id_deploy -p "${PORT:-22}" "$USER@$HOST" 'bash -seuo pipefail' <<'REMOTE'
             cd /var/www/love-connect
 
-            # سایت‌هایی که الان این دامنه را ادعا می‌کنند، به‌جز خودمان
-            current=$(grep -rl "dl193\.ir" /etc/nginx/sites-enabled/ 2>/dev/null | grep -v love-connect || true)
-            if [ -n "$current" ]; then
-              echo "این سایت‌ها دامنه را در دست دارند و غیرفعال می‌شوند:"
-              echo "$current"
-              # فقط symlink برداشته می‌شود؛ فایل در sites-available می‌ماند
-              for link in $current; do
-                [ -L "$link" ] && sudo rm "$link" && echo "  برداشته شد: $link"
-              done
-            fi
-
-            sudo cp deploy/nginx-love-connect.conf /etc/nginx/sites-available/love-connect
-            sudo ln -sfn /etc/nginx/sites-available/love-connect /etc/nginx/sites-enabled/love-connect
+            CERT=/etc/ssl/cloudflare/dl193.ir.pem
+            KEY=/etc/ssl/cloudflare/dl193.ir.key
 
             # اگر map از قبل جای دیگری تعریف شده، تعریف دوباره خطا می‌دهد
             if ! grep -rq 'connection_upgrade' /etc/nginx/conf.d/ /etc/nginx/nginx.conf 2>/dev/null; then
               sudo cp deploy/nginx-upgrade-map.conf /etc/nginx/conf.d/love-connect-upgrade-map.conf
             fi
 
-            sudo nginx -t
+            # سایت‌هایی که الان این دامنه را ادعا می‌کنند، به‌جز خودمان.
+            #
+            # -R و نه -r: محتویات sites-enabled سراسر symlink است و grep -r در
+            # پیمایش بازگشتی از symlink رد می‌شود. با -r اینجا همیشه خالی
+            # درمی‌آمد، فروشگاه غیرفعال نمی‌شد، و nginx با دو بلوکِ هم‌نام
+            # «conflicting server name» می‌داد و اولی را نگه می‌داشت — یعنی
+            # جابه‌جایی دامنه بی‌صدا انجام نمی‌شد.
+            #
+            # فیلتر به انتهای مسیر لنگر می‌شود، نه هرجای آن: با یک grep -v
+            # سادهٔ زیررشته‌ای، هر مسیری که تصادفاً «love-connect» در خودش
+            # داشته باشد هم کنار گذاشته می‌شد.
+            current=$(grep -Rl "dl193\.ir" /etc/nginx/sites-enabled/ 2>/dev/null \
+                      | grep -vE '/(love-connect|love-connect-ssl)$' || true)
+
+            # مقصد واقعی هر symlink پیش از برداشتن ثبت می‌شود. اسم symlink
+            # همیشه با اسم فایلش در sites-available یکی نیست، پس برای برگرداندن
+            # نمی‌شود از روی اسم حدس زد.
+            SAVED=$(mktemp)
+            trap 'rm -f "$SAVED"' EXIT
+
+            if [ -n "$current" ]; then
+              echo "این سایت‌ها دامنه را در دست دارند و غیرفعال می‌شوند:"
+              echo "$current"
+              # فقط symlink برداشته می‌شود؛ فایل در sites-available می‌ماند
+              for link in $current; do
+                if [ -L "$link" ]; then
+                  printf '%s\t%s\n' "$link" "$(readlink -f "$link")" >> "$SAVED"
+                  sudo rm "$link" && echo "  برداشته شد: $link"
+                fi
+              done
+            fi
+
+            # اگر nginx -t رد شود، دامنه نباید بی‌صاحب بماند: هر symlink ای که
+            # برداشتیم دقیقاً به مقصد قبلی‌اش برمی‌گردد و کانفیگ خودمان کنار
+            # می‌رود. بدون این، یک کانفیگ خراب سایت را کامل می‌خواباند.
+            restore() {
+              echo "::warning::nginx کانفیگ را نپذیرفت — همه‌چیز به حالت قبل برمی‌گردد."
+              sudo rm -f /etc/nginx/sites-enabled/love-connect /etc/nginx/sites-enabled/love-connect-ssl
+              while IFS="$(printf '\t')" read -r link target; do
+                [ -n "$link" ] || continue
+                sudo ln -sfn "$target" "$link"
+                echo "  برگردانده شد: $link → $target"
+              done < "$SAVED"
+              sudo nginx -t && sudo systemctl reload nginx
+              exit 1
+            }
+
+            sudo cp deploy/nginx-love-connect.conf /etc/nginx/sites-available/love-connect
+            sudo ln -sfn /etc/nginx/sites-available/love-connect /etc/nginx/sites-enabled/love-connect
+
+            # بلوک ۴۴۳ فقط وقتی نصب می‌شود که گواهی واقعاً روی دیسک باشد.
+            # وگرنه nginx -t رد می‌کند و کل وب‌سرور بالا نمی‌آید.
+            if sudo test -s "$CERT" && sudo test -s "$KEY"; then
+              echo "گواهی Origin پیدا شد؛ بلوک HTTPS فعال می‌شود."
+              sudo cp deploy/nginx-love-connect-ssl.conf /etc/nginx/sites-available/love-connect-ssl
+              sudo ln -sfn /etc/nginx/sites-available/love-connect-ssl /etc/nginx/sites-enabled/love-connect-ssl
+            else
+              sudo rm -f /etc/nginx/sites-enabled/love-connect-ssl
+              echo "::warning::گواهی Origin در $CERT نیست، پس فقط HTTP سرو می‌شود."
+              echo "::warning::تا وقتی گواهی را نگذاشته‌ای، کلادفلر باید روی Flexible باشد وگرنه ۵۲۵ می‌گیری."
+            fi
+
+            sudo nginx -t || restore
             sudo systemctl reload nginx
             echo "دامنه جابه‌جا شد."
           REMOTE

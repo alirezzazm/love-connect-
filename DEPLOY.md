@@ -85,8 +85,11 @@ curl -I http://127.0.0.1:3001/        # باید 200 بدهد
 اول ببین کدام فایل الان `dl193.ir` را در دست دارد:
 
 ```bash
-grep -rl "dl193.ir" /etc/nginx/sites-enabled/
+grep -Rl "dl193.ir" /etc/nginx/sites-enabled/
 ```
+
+> `-R` باشد نه `-r`: محتویات `sites-enabled` همه symlink است و `grep -r`
+> در پیمایش بازگشتی از symlink رد می‌شود، پس با `-r` خروجی همیشه خالی است.
 
 بعد آن را غیرفعال کن و مال ما را فعال کن:
 
@@ -110,10 +113,38 @@ sudo nginx -t && sudo systemctl reload nginx
 وصل می‌شود و بلوک ۸۰ کافی است. سایت بلافاصله بالا می‌آید. عیبش این است که
 ترافیک کلادفلر تا سرور رمزنگاری نشده می‌ماند.
 
-**ب) درست‌ترین راه — گواهی روی سرور و کلادفلر روی Full**
-در پنل کلادفلر: SSL/TLS → Origin Server → Create Certificate. فایل‌ها را
-روی سرور بگذار، بلوک ۴۴۳ را در `deploy/nginx-love-connect.conf` باز کن،
-مسیر گواهی را اصلاح کن و `nginx -t && systemctl reload nginx`.
+**ب) درست‌ترین راه — گواهی Origin روی سرور و کلادفلر روی Full (strict)**
+
+در پنل کلادفلر: SSL/TLS → Origin Server → **Create Certificate**. دو متن
+می‌دهد؛ روی سرور بگذارشان:
+
+```bash
+sudo mkdir -p /etc/ssl/cloudflare
+sudo nano /etc/ssl/cloudflare/dl193.ir.pem    # ← Origin Certificate
+sudo nano /etc/ssl/cloudflare/dl193.ir.key    # ← Private Key
+sudo chmod 600 /etc/ssl/cloudflare/dl193.ir.key
+sudo chown root:root /etc/ssl/cloudflare/*
+```
+
+> کلید خصوصی فقط همان یک بار در پنل نشان داده می‌شود. اگر صفحه را ببندی
+> باید گواهی تازه بسازی.
+
+بعد بلوک HTTPS را فعال کن:
+
+```bash
+sudo cp deploy/nginx-love-connect-ssl.conf /etc/nginx/sites-available/love-connect-ssl
+sudo ln -s /etc/nginx/sites-available/love-connect-ssl /etc/nginx/sites-enabled/
+sudo nginx -t && sudo systemctl reload nginx
+```
+
+و در کلادفلر SSL/TLS → Overview → **Full (strict)**.
+
+> بلوک ۴۴۳ عمداً در فایل جداست. nginx اگر `ssl_certificate` به فایلی اشاره
+> کند که وجود ندارد، حتی `nginx -t` را هم رد می‌کند و کل وب‌سرور بالا
+> نمی‌آید. با جدا بودن، سایت می‌تواند روی HTTP بالا بماند تا گواهی برسد.
+> workflow خودکار هم همین کار را می‌کند: بلوک ۴۴۳ را **فقط وقتی** نصب
+> می‌کند که هر دو فایل گواهی روی دیسک باشند، وگرنه با یک هشدار از کنارش
+> رد می‌شود و HTTP را سرو می‌کند.
 
 > کوکی نشستِ پنل ادمین در حالت production فقط روی HTTPS فرستاده می‌شود.
 > چون کلادفلر جلوی سایت است و مرورگر HTTPS می‌بیند، هر دو حالت کار می‌کنند.
