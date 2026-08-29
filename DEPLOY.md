@@ -1,16 +1,28 @@
-# راهنمای استقرار روی سرور dl193.ir
+# راهنمای استقرار روی dl193.ir
 
-> **هشدار:** `dl193.ir` همین حالا فروشگاه «تتو لندز» را سرو می‌کند (Next.js پشت
-> Cloudflare، روی پورت ۳۰۰۰). این راهنما اپ دعوت را روی **زیردامنهٔ**
-> `date.dl193.ir` و **پورت ۳۰۰۱** بالا می‌آورد تا به فروشگاه دست نخورد.
-> اگر می‌خواهی جای دیگری بنشیند، `server_name` در فایل nginx و
-> `NEXT_PUBLIC_SITE_URL` را عوض کن.
+اپ دعوت به قرار روی **دامنهٔ اصلی `dl193.ir`** بالا می‌آید و جای فروشگاه
+«تتو لندز» را روی این دامنه می‌گیرد.
 
-## پیش‌نیازها روی سرور
+> **فروشگاه پاک نمی‌شود.** فقط سایتش را از `sites-enabled` غیرفعال می‌کنی؛
+> فایل کانفیگش در `sites-available` و سرویسش روی پورت ۳۰۰۰ دست‌نخورده
+> می‌ماند. هر وقت خواستی برش گردانی، یک symlink و یک reload کافی است
+> (بخش «برگرداندن فروشگاه» در انتها).
+
+## وضعیت فعلی سرور
+
+- `dl193.ir` پشت کلادفلر است و همین حالا **خطای ۵۲۵** می‌دهد: کلادفلر روی
+  حالت Full است ولی دست‌دادن TLS با سرور شکست می‌خورد. این پیش از هر کاری
+  باید حل شود، وگرنه اپ ما هم همان ۵۲۵ را می‌گیرد.
+- IP مبدأ: `87.248.155.28` (از روی `date.dl193.ir` که مستقیم به همان سرور
+  اشاره می‌کند).
+- فروشگاه روی پورت ۳۰۰۰ اجرا می‌شود. اپ ما روی **۳۰۰۱** می‌نشیند تا تداخل
+  نداشته باشند.
+
+## پیش‌نیازها
 
 - Node.js ۲۰ یا بالاتر (`node -v`)
 - nginx
-- در Cloudflare یک رکورد `A` برای `date` به IP همان سرور (پروکسی روشن، ابر نارنجی)
+- دسترسی به پنل کلادفلر (برای حالت SSL)
 
 ## گام‌ها
 
@@ -19,7 +31,11 @@
 ```bash
 sudo mkdir -p /var/www/love-connect
 sudo chown -R "$USER" /var/www/love-connect
-git clone <آدرس-ریپو> /var/www/love-connect
+
+git clone https://github.com/alirezzazm/tattoo-shop /tmp/lc-src
+cd /tmp/lc-src
+git checkout claude/dating-romance-project-e5is7f
+cp -r date-invite/. /var/www/love-connect/
 cd /var/www/love-connect
 ```
 
@@ -27,94 +43,132 @@ cd /var/www/love-connect
 
 ```bash
 sudo cp deploy/love-connect.env.example /etc/love-connect.env
-sudo nano /etc/love-connect.env      # مقادیر را پر کن
+sudo nano /etc/love-connect.env
 sudo chown root:root /etc/love-connect.env
 sudo chmod 600 /etc/love-connect.env
 ```
 
-`AUTH_SECRET` را با `openssl rand -base64 32` بساز. رمز ادمین را **تازه** بگذار،
-نه همانی که در محیط توسعه بوده.
+- `AUTH_SECRET` را با `openssl rand -base64 32` بساز.
+- `ADMIN_PASSWORD` را **تازه** بگذار.
+- `NEXT_PUBLIC_SITE_URL` باید دقیقاً `https://dl193.ir` باشد. فقط برای لینک
+  دعوت نیست؛ ریدایرکت‌های ورود به پنل هم از روی همین ساخته می‌شوند.
 
-### ۳. نصب سرویس و nginx
+### ۳. نصب سرویس
 
-اول مسیر node را چک کن — یونیت پیش‌فرض `/usr/bin/node` را صدا می‌زند و روی
-سرورهایی که node با nvm نصب شده مسیر فرق دارد:
+مسیر node را اول چک کن — یونیت `/usr/bin/node` را صدا می‌زند:
 
 ```bash
-which node        # اگر /usr/bin/node نبود، ExecStart را در فایل service عوض کن
+which node        # اگر فرق داشت، ExecStart را در فایل service عوض کن
 ```
-
 
 ```bash
 sudo mkdir -p /var/lib/love-connect
 sudo cp deploy/love-connect.service /etc/systemd/system/
 sudo systemctl daemon-reload
+```
 
+### ۴. بیلد و راه‌اندازی سرویس
+
+این را **قبل** از دست زدن به nginx انجام بده، تا وقتی دامنه را جابه‌جا
+می‌کنی اپ از قبل بالا و آماده باشد:
+
+```bash
+sudo bash deploy/deploy.sh
+sudo systemctl enable love-connect
+curl -I http://127.0.0.1:3001/        # باید 200 بدهد
+```
+
+اگر اینجا ۲۰۰ نگرفتی، جلوتر نرو. `journalctl -u love-connect -n 50`.
+
+### ۵. جابه‌جا کردن دامنه
+
+اول ببین کدام فایل الان `dl193.ir` را در دست دارد:
+
+```bash
+grep -rl "dl193.ir" /etc/nginx/sites-enabled/
+```
+
+بعد آن را غیرفعال کن و مال ما را فعال کن:
+
+```bash
+sudo rm /etc/nginx/sites-enabled/<اسم-فایل-فروشگاه>     # فقط symlink
 sudo cp deploy/nginx-love-connect.conf /etc/nginx/sites-available/love-connect
 sudo ln -s /etc/nginx/sites-available/love-connect /etc/nginx/sites-enabled/
 
-# map مربوط به وب‌سوکت. اگر روی این سرور از قبل چنین map ای هست (مثلاً برای
-# فروشگاه)، این خط را رد کن — nginx از تعریف تکراری خطا می‌گیرد.
+# map مربوط به وب‌سوکت. اگر از قبل چنین map ای روی سرور هست، این خط را رد کن.
 sudo cp deploy/nginx-upgrade-map.conf /etc/nginx/conf.d/love-connect-upgrade-map.conf
 
 sudo nginx -t && sudo systemctl reload nginx
 ```
 
-### ۴. بیلد و راه‌اندازی
+### ۶. حل کردن مشکل SSL (خطای ۵۲۵)
+
+یکی از این دو را انتخاب کن:
+
+**الف) سریع‌ترین راه — کلادفلر روی Flexible**
+در پنل کلادفلر: SSL/TLS → Overview → **Flexible**. کلادفلر با HTTP به سرور
+وصل می‌شود و بلوک ۸۰ کافی است. سایت بلافاصله بالا می‌آید. عیبش این است که
+ترافیک کلادفلر تا سرور رمزنگاری نشده می‌ماند.
+
+**ب) درست‌ترین راه — گواهی روی سرور و کلادفلر روی Full**
+در پنل کلادفلر: SSL/TLS → Origin Server → Create Certificate. فایل‌ها را
+روی سرور بگذار، بلوک ۴۴۳ را در `deploy/nginx-love-connect.conf` باز کن،
+مسیر گواهی را اصلاح کن و `nginx -t && systemctl reload nginx`.
+
+> کوکی نشستِ پنل ادمین در حالت production فقط روی HTTPS فرستاده می‌شود.
+> چون کلادفلر جلوی سایت است و مرورگر HTTPS می‌بیند، هر دو حالت کار می‌کنند.
+
+### ۷. بررسی
 
 ```bash
-sudo bash deploy/deploy.sh
-sudo systemctl enable love-connect
+curl -I https://dl193.ir/            # 200
+curl -I https://dl193.ir/admin       # 307 به /admin/login
 ```
 
-### ۵. بررسی
+بعد برو به `https://dl193.ir/admin`، وارد شو و اولین دعوت را بساز.
+
+## آدرس‌ها بعد از استقرار
+
+| چه چیزی | آدرس |
+| --- | --- |
+| صفحهٔ معرفی | `https://dl193.ir/` |
+| پنل ادمین | `https://dl193.ir/admin` |
+| لینک دعوت | `https://dl193.ir/d/<کد>` |
+
+## برگرداندن فروشگاه
 
 ```bash
-curl -I http://127.0.0.1:3001/          # باید 200 بدهد
-curl -I https://date.dl193.ir/          # از بیرون
-journalctl -u love-connect -f           # لاگ زنده
+sudo rm /etc/nginx/sites-enabled/love-connect
+sudo ln -s /etc/nginx/sites-available/<اسم-فایل-فروشگاه> /etc/nginx/sites-enabled/
+sudo nginx -t && sudo systemctl reload nginx
 ```
 
-بعد برو به `https://date.dl193.ir/admin`، وارد شو و اولین دعوت را بساز.
+دیتابیس و سرویس اپ دعوت دست‌نخورده می‌ماند؛ هر وقت خواستی دوباره برش
+می‌گردانی.
 
 ## به‌روزرسانی بعدی
 
 ```bash
 cd /var/www/love-connect
-git pull
 sudo bash deploy/deploy.sh
 ```
 
-## نکته‌های مهم
+## نکته‌ها
 
 **دیتابیس.** فایل SQLite در `/var/lib/love-connect/app.db` می‌ماند، بیرون از
-پوشهٔ کد، تا `git pull` و بیلد دوباره پاکش نکند. برای پشتیبان:
+پوشهٔ کد، تا بیلد دوباره پاکش نکند. پشتیبان:
 
 ```bash
 sudo sqlite3 /var/lib/love-connect/app.db ".backup /root/love-connect-$(date +%F).db"
 ```
 
-**`NEXT_PUBLIC_SITE_URL` را حتماً درست بگذار.** فقط برای ساختن لینک دعوت نیست؛
-ریدایرکت‌های ورود به پنل هم از روی همین ساخته می‌شوند. اگر خالی یا اشتباه باشد،
-اپ به هدرهای `X-Forwarded-*` برمی‌گردد و اگر آن‌ها هم نباشند کاربر بعد از ورود به
-آدرس داخلی سرور (`127.0.0.1:3001`) پرت می‌شود.
+**IPv6.** خط `listen [::]:80;` پیش‌فرض کامنت است. اگر سرورت IPv6 دارد بازش
+کن؛ اگر ندارد و بازش کنی، nginx با «Address family not supported by protocol»
+بالا نمی‌آید.
 
-**کوکی و HTTPS.** در حالت production کوکی نشست فقط روی HTTPS فرستاده می‌شود.
-چون Cloudflare جلوی سایت است، مرورگر HTTPS می‌بیند و مشکلی نیست — ولی حالت SSL
-در Cloudflare باید **Full** باشد، نه Flexible، وگرنه ممکن است حلقهٔ ریدایرکت
-بخوری.
+**سرویس بالا نمی‌آید؟** اول `journalctl -u love-connect -n 50`. دو علت رایج:
+مسیر اشتباه node در `ExecStart`، و نبودن `.next/standalone/server.js` (که
+`deploy.sh` خودش قبلش گیر می‌دهد).
 
-**سرویس بالا نمی‌آید؟** اول `journalctl -u love-connect -n 50` را ببین.
-دو علت رایج: مسیر اشتباه node در `ExecStart`، و نبودن `.next/standalone/server.js`
-(که `deploy.sh` خودش قبلش گیر می‌دهد).
-
-**IPv6.** خط `listen [::]:80;` در کانفیگ nginx به‌صورت پیش‌فرض کامنت است. اگر
-سرورت IPv6 دارد بازش کن؛ اگر ندارد و بازش کنی، nginx با
-«Address family not supported by protocol» بالا نمی‌آید.
-
-**پورت.** اگر ۳۰۰۱ روی سرور اشغال است (`sudo ss -tlnp | grep 3001`)، هم در
+**پورت.** اگر ۳۰۰۱ اشغال است (`sudo ss -tlnp | grep 3001`)، هم در
 `deploy/love-connect.service` و هم در `deploy/nginx-love-connect.conf` عوضش کن.
-
-**اگر خواستی روی همان `dl193.ir` و زیر یک مسیر باشد** (مثلاً `dl193.ir/date`)،
-به `basePath: "/date"` در `next.config.ts` نیاز داری و باید در nginx فروشگاه یک
-`location /date/` اضافه شود. زیردامنه ساده‌تر و کم‌ریسک‌تر است.
