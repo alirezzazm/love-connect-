@@ -1,5 +1,8 @@
 export type QuestionType = "choice" | "datetime";
 
+/** زبان صفحهٔ دعوت. برای هر دعوت جدا در پنل ادمین انتخاب می‌شود. */
+export type Locale = "fa" | "en";
+
 export type QuestionInput = {
   step: number;
   type: QuestionType;
@@ -10,6 +13,7 @@ export type QuestionInput = {
 export type InviteInput = {
   recipientName: string;
   senderName: string;
+  locale: Locale;
   headline: string;
   closingNote: string;
   active: boolean;

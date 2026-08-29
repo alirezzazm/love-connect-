@@ -16,6 +16,9 @@ model Invite {
   recipientName String
   /// اسم خودِ دعوت‌کننده
   senderName    String
+  /// زبان صفحهٔ دعوت: "fa" یا "en". از پنل ادمین برای هر دعوت جدا انتخاب
+  /// می‌شود و جهت صفحه (rtl/ltr) را هم تعیین می‌کند.
+  locale        String   @default("fa")
   /// سؤال اول که با دکمهٔ فراری «نه» نشان داده می‌شود
   headline      String
   /// پیام پایانی بعد از تمام شدن مراحل

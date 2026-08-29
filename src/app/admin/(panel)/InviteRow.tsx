@@ -2,12 +2,15 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import { LOCALE_LABEL } from "@/lib/i18n";
 import { inviteUrl } from "@/lib/site";
+import type { Locale } from "@/lib/types";
 
 export type InviteSummary = {
   id: string;
   slug: string;
   recipientName: string;
+  locale: Locale;
   active: boolean;
   views: number;
   createdAt: string;
@@ -50,7 +53,8 @@ export default function InviteRow({ invite }: { invite: InviteSummary }) {
             </span>
           </p>
           <p className="mt-1 text-xs text-white/45">
-            /d/{invite.slug} — {invite.questionCount} سؤال — {invite.views} بازدید
+            /d/{invite.slug} — {LOCALE_LABEL[invite.locale]} —{" "}
+            {invite.questionCount} سؤال — {invite.views} بازدید
           </p>
         </div>
 

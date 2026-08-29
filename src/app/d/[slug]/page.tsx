@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { db } from "@/lib/db";
 import InviteFlow, { type FlowInvite } from "./InviteFlow";
+import { isLocale } from "@/lib/i18n";
 import type { QuestionType } from "@/lib/types";
 
 // هر بازدید شمرده می‌شود، پس صفحه نباید کش شود
@@ -38,6 +39,9 @@ export default async function InvitePage({
     slug: invite.slug,
     recipientName: invite.recipientName,
     senderName: invite.senderName,
+    // دعوت‌هایی که پیش از افزوده شدن این ستون ساخته شده‌اند مقدار پیش‌فرض
+    // دیتابیس را دارند، ولی اگر به هر دلیل چیز دیگری آنجا بود به fa برمی‌گردیم.
+    locale: isLocale(invite.locale) ? invite.locale : "fa",
     headline: invite.headline,
     closingNote: invite.closingNote,
     questions: invite.questions.map((q) => ({

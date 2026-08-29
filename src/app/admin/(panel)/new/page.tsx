@@ -18,10 +18,11 @@ export default function NewInvitePage() {
         initial={{
           recipientName: "",
           senderName: "",
-          headline: DEFAULT_HEADLINE,
-          closingNote: DEFAULT_CLOSING_NOTE,
+          locale: "fa",
+          headline: DEFAULT_HEADLINE.fa,
+          closingNote: DEFAULT_CLOSING_NOTE.fa,
           active: true,
-          questions: DEFAULT_QUESTIONS,
+          questions: DEFAULT_QUESTIONS.fa,
         }}
       />
     </>

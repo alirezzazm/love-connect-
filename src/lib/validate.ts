@@ -1,3 +1,4 @@
+import { isLocale } from "./i18n";
 import type { InviteInput, QuestionInput, QuestionType } from "./types";
 
 const TYPES: QuestionType[] = ["choice", "datetime"];
@@ -26,6 +27,13 @@ export function parseInviteInput(
   const senderName = str(body.senderName);
   if (!senderName) return { ok: false, error: "اسم خودت را بنویس." };
   if (senderName.length > 60) return { ok: false, error: "اسم خیلی بلند است." };
+
+  // زبان از فهرست بسته انتخاب می‌شود، نه از ورودی خام: این مقدار مستقیم در
+  // dir و lang صفحه می‌نشیند و نباید هر رشته‌ای بتواند آنجا بنشیند.
+  if (body.locale !== undefined && !isLocale(body.locale)) {
+    return { ok: false, error: "زبان انتخاب‌شده معتبر نیست." };
+  }
+  const locale = isLocale(body.locale) ? body.locale : "fa";
 
   const headline = str(body.headline);
   if (!headline) return { ok: false, error: "متن سؤال اول را بنویس." };
@@ -79,6 +87,7 @@ export function parseInviteInput(
     data: {
       recipientName,
       senderName,
+      locale,
       headline,
       closingNote,
       active: body.active !== false,

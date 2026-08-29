@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { db } from "@/lib/db";
+import { isLocale } from "@/lib/i18n";
 import InviteRow from "./InviteRow";
 
 export const dynamic = "force-dynamic";
@@ -47,6 +48,7 @@ export default async function AdminHome() {
                 id: invite.id,
                 slug: invite.slug,
                 recipientName: invite.recipientName,
+                locale: isLocale(invite.locale) ? invite.locale : "fa",
                 active: invite.active,
                 views: invite.views,
                 createdAt: invite.createdAt.toISOString(),

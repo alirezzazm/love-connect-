@@ -4,6 +4,12 @@ import { db } from "@/lib/db";
 import InviteForm from "../InviteForm";
 import DeleteInvite from "../DeleteInvite";
 import ShareLink from "../ShareLink";
+import {
+  LOCALE_LABEL,
+  formatDualDateOnly,
+  formatDualDateTime,
+  isLocale,
+} from "@/lib/i18n";
 import type { AnswerRecord, QuestionType } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
@@ -37,6 +43,8 @@ export default async function InviteDetailPage({
     ? parseJson<AnswerRecord[]>(invite.response.answers, [])
     : [];
 
+  const locale = isLocale(invite.locale) ? invite.locale : "fa";
+
   return (
     <>
       <Link href="/admin" className="text-sm text-white/50 hover:text-white/80">
@@ -45,11 +53,14 @@ export default async function InviteDetailPage({
       <h1 className="mb-1 mt-3 text-2xl font-black">
         دعوت {invite.recipientName}
       </h1>
-      <p className="mb-6 text-xs text-white/45">
-        {invite.views} بازدید — ساخته‌شده در{" "}
-        {new Intl.DateTimeFormat("fa-IR", {
-          dateStyle: "medium",
-        }).format(invite.createdAt)}
+      <p className="mb-6 flex flex-wrap items-center gap-2 text-xs text-white/45">
+        <span className="rounded-full border border-white/15 px-2.5 py-0.5 text-white/70">
+          {LOCALE_LABEL[locale]}
+        </span>
+        <span>
+          {invite.views} بازدید — ساخته‌شده در{" "}
+          {formatDualDateOnly(invite.createdAt)}
+        </span>
       </p>
 
       <ShareLink slug={invite.slug} />
@@ -71,10 +82,7 @@ export default async function InviteDetailPage({
             </dl>
             <p className="mt-4 text-xs text-white/45">
               {invite.response.dodges} بار سعی کرد «نه» را بزند 😄 — ثبت‌شده در{" "}
-              {new Intl.DateTimeFormat("fa-IR", {
-                dateStyle: "medium",
-                timeStyle: "short",
-              }).format(invite.response.updatedAt)}
+              {formatDualDateTime(invite.response.updatedAt)}
             </p>
           </>
         ) : (
@@ -92,6 +100,7 @@ export default async function InviteDetailPage({
         initial={{
           recipientName: invite.recipientName,
           senderName: invite.senderName,
+          locale,
           headline: invite.headline,
           closingNote: invite.closingNote,
           active: invite.active,

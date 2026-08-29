@@ -2,7 +2,18 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import type { InviteInput, QuestionInput, QuestionType } from "@/lib/types";
+import {
+  DEFAULT_CLOSING_NOTE,
+  DEFAULT_HEADLINE,
+  DEFAULT_QUESTIONS,
+} from "@/lib/defaults";
+import { LOCALES, LOCALE_LABEL } from "@/lib/i18n";
+import type {
+  InviteInput,
+  Locale,
+  QuestionInput,
+  QuestionType,
+} from "@/lib/types";
 
 const FIELD =
   "w-full rounded-2xl border border-white/15 bg-white/5 px-4 py-3 text-sm outline-none placeholder:text-white/35 focus:border-blush";
@@ -22,6 +33,39 @@ export default function InviteForm({
 
   const patch = (changes: Partial<InviteInput>) =>
     setForm((f) => ({ ...f, ...changes }));
+
+  /**
+   * عوض کردن زبان دعوت.
+   *
+   * اگر متن‌ها هنوز دست‌نخوردهٔ پیش‌فرضِ زبان قبلی باشند، با پیش‌فرض‌های زبان
+   * تازه جایگزین می‌شوند تا لازم نباشد دستی همه را ترجمه کنی. اما اگر چیزی
+   * را خودت عوض کرده باشی، فقط زبان عوض می‌شود و نوشته‌هایت دست‌نخورده
+   * می‌ماند — عوض کردن زبان نباید کار نوشتهٔ کسی را دور بریزد.
+   */
+  const switchLocale = (next: Locale) =>
+    setForm((f) => {
+      if (f.locale === next) return f;
+
+      const untouched =
+        f.headline === DEFAULT_HEADLINE[f.locale] &&
+        f.closingNote === DEFAULT_CLOSING_NOTE[f.locale] &&
+        JSON.stringify(f.questions) ===
+          JSON.stringify(DEFAULT_QUESTIONS[f.locale]);
+
+      if (!untouched) return { ...f, locale: next };
+
+      return {
+        ...f,
+        locale: next,
+        headline: DEFAULT_HEADLINE[next],
+        closingNote: DEFAULT_CLOSING_NOTE[next],
+        // کپی عمیق: آرایهٔ پیش‌فرض ماژول است و نباید با ویرایش فرم عوض شود
+        questions: DEFAULT_QUESTIONS[next].map((q) => ({
+          ...q,
+          options: [...q.options],
+        })),
+      };
+    });
 
   const patchQuestion = (index: number, changes: Partial<QuestionInput>) =>
     setForm((f) => ({
@@ -109,6 +153,34 @@ export default function InviteForm({
             required
           />
         </label>
+      </div>
+
+      <div className="flex flex-col gap-2 rounded-2xl border border-white/12 bg-white/5 p-4">
+        <span className="text-sm text-white/70">زبان صفحهٔ دعوت</span>
+        <div className="flex flex-wrap gap-2">
+          {LOCALES.map((code) => (
+            <button
+              key={code}
+              type="button"
+              onClick={() => switchLocale(code)}
+              aria-pressed={form.locale === code}
+              className={`rounded-full border px-5 py-2 text-sm transition ${
+                form.locale === code
+                  ? "border-blush bg-blush/20 font-bold text-white"
+                  : "border-white/15 text-white/60 hover:bg-white/10"
+              }`}
+            >
+              {LOCALE_LABEL[code]}
+            </button>
+          ))}
+        </div>
+        <p className="text-xs leading-6 text-white/45">
+          دکمه‌ها، جمله‌های دکمهٔ فراری و صفحهٔ پایانی به این زبان نشان داده
+          می‌شوند و جهت صفحه هم خودکار عوض می‌شود. تاریخ همیشه به{" "}
+          <b className="text-white/70">هر دو تقویم شمسی و میلادی</b> نمایش داده
+          می‌شود. سؤال‌ها و متن‌های زیر را خودت به همان زبان بنویس — تا وقتی
+          دست‌نخورده باشند، با عوض کردن زبان خودشان ترجمه می‌شوند.
+        </p>
       </div>
 
       <label className="flex flex-col gap-2">

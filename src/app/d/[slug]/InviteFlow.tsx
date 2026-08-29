@@ -2,7 +2,14 @@
 
 import { useMemo, useRef, useState } from "react";
 import RunawayNo from "@/components/RunawayNo";
-import type { AnswerRecord, QuestionType } from "@/lib/types";
+import {
+  DIRECTION,
+  STRINGS,
+  formatDateTimeAnswer,
+  formatGregorian,
+  formatJalali,
+} from "@/lib/i18n";
+import type { AnswerRecord, Locale, QuestionType } from "@/lib/types";
 
 export type FlowQuestion = {
   step: number;
@@ -15,33 +22,15 @@ export type FlowInvite = {
   slug: string;
   recipientName: string;
   senderName: string;
+  locale: Locale;
   headline: string;
   closingNote: string;
   questions: FlowQuestion[];
 };
 
-/** جمله‌های تشویقی وقتی دکمهٔ «نه» فرار می‌کند */
-const TAUNTS = [
-  "بگیرش اگه می‌تونی 😄",
-  "این دکمه امروز حسابی سرحاله…",
-  "انگار «نه» جواب نیست.",
-  "باشه باشه، «بله» رو بزن دیگه ☺",
-  "قسمت نیست انگار!",
-];
-
-function formatPersianDate(value: string) {
-  if (!value) return "";
-  const date = new Date(`${value}T00:00:00`);
-  if (Number.isNaN(date.getTime())) return value;
-  return new Intl.DateTimeFormat("fa-IR", {
-    weekday: "long",
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-  }).format(date);
-}
-
 export default function InviteFlow({ invite }: { invite: FlowInvite }) {
+  const t = STRINGS[invite.locale];
+  const dir = DIRECTION[invite.locale];
   const cardRef = useRef<HTMLDivElement>(null);
   /**
    * زمان آخرین جاخالیِ دکمهٔ «نه». چون «نه» کنار «بله» می‌ماند، وقتی کنار
@@ -60,7 +49,8 @@ export default function InviteFlow({ invite }: { invite: FlowInvite }) {
   const [saveError, setSaveError] = useState("");
 
   const question = invite.questions[index];
-  const taunt = dodges > 0 ? TAUNTS[Math.min(dodges - 1, TAUNTS.length - 1)] : "";
+  const taunt =
+    dodges > 0 ? t.taunts[Math.min(dodges - 1, t.taunts.length - 1)] : "";
 
   // هر بار که دکمهٔ «نه» فرار می‌کند، «بله» کمی بزرگ‌تر می‌شود
   const yesScale = Math.min(1 + dodges * 0.06, 1.5);
@@ -86,7 +76,7 @@ export default function InviteFlow({ invite }: { invite: FlowInvite }) {
       });
       if (!res.ok) throw new Error("failed");
     } catch {
-      setSaveError("جواب‌هایت ثبت نشد. اینترنت را چک کن و دوباره امتحان کن.");
+      setSaveError(t.saveError);
     } finally {
       setSaving(false);
     }
@@ -115,13 +105,17 @@ export default function InviteFlow({ invite }: { invite: FlowInvite }) {
 
   if (stage === "ask") {
     return (
-      <div className="grid min-h-dvh place-items-center px-5 py-10">
+      <div
+        dir={dir}
+        lang={invite.locale}
+        className="grid min-h-dvh place-items-center px-5 py-10"
+      >
         <div
           ref={cardRef}
           className={`${card} animate-pop-in relative overflow-hidden text-center`}
         >
           <p className="text-sm text-white/55">
-            {invite.recipientName} عزیز، {invite.senderName} برایت نوشته:
+            {t.intro(invite.recipientName, invite.senderName)}
           </p>
           <h1 className="mt-4 text-3xl font-black leading-relaxed sm:text-4xl">
             {invite.headline}
@@ -139,11 +133,11 @@ export default function InviteFlow({ invite }: { invite: FlowInvite }) {
               className="rounded-full bg-gradient-to-br from-blush to-blush-deep px-8 py-3.5 text-lg font-bold text-white shadow-lg shadow-blush/30 transition-transform"
               style={{ transform: `scale(${yesScale})` }}
             >
-              بله
+              {t.yes}
             </button>
 
             <RunawayNo
-              label="نه"
+              label={t.no}
               boundsRef={cardRef}
               onDodge={() => {
                 lastDodgeAt.current = Date.now();
@@ -160,7 +154,11 @@ export default function InviteFlow({ invite }: { invite: FlowInvite }) {
     const isLast = index + 1 === invite.questions.length;
 
     return (
-      <div className="grid min-h-dvh place-items-center px-5 py-10">
+      <div
+        dir={dir}
+        lang={invite.locale}
+        className="grid min-h-dvh place-items-center px-5 py-10"
+      >
         <div key={question.step} className={`${card} animate-pop-in`}>
           <div className="mb-5 flex items-center gap-2">
             {invite.questions.map((q, i) => (
@@ -192,32 +190,42 @@ export default function InviteFlow({ invite }: { invite: FlowInvite }) {
           ) : (
             <div className="mt-6 flex flex-col gap-4">
               <label className="flex flex-col gap-2">
-                <span className="text-sm text-white/70">چه روزی؟</span>
+                <span className="text-sm text-white/70">{t.whichDay}</span>
                 <input
                   type="date"
                   value={day}
                   onChange={(e) => setDay(e.target.value)}
+                  // انتخابگر خودِ مرورگر میلادی است. برای اینکه کاربر فارسی
+                  // هم بداند چه روزی را زده، تاریخ انتخاب‌شده پایینش به هر
+                  // دو تقویم نشان داده می‌شود.
                   className="rounded-2xl border border-white/15 bg-white/5 px-4 py-3 outline-none focus:border-blush"
+                  dir="ltr"
                 />
               </label>
+
+              {day && <DualDatePreview day={day} locale={invite.locale} />}
+
               <label className="flex flex-col gap-2">
-                <span className="text-sm text-white/70">چه ساعتی؟</span>
+                <span className="text-sm text-white/70">{t.whichTime}</span>
                 <input
                   type="time"
                   value={time}
                   onChange={(e) => setTime(e.target.value)}
                   className="rounded-2xl border border-white/15 bg-white/5 px-4 py-3 outline-none focus:border-blush"
+                  dir="ltr"
                 />
               </label>
               <button
                 type="button"
                 disabled={!day || !time}
                 onClick={() =>
-                  answerAndAdvance(`${formatPersianDate(day)} — ساعت ${time}`)
+                  answerAndAdvance(
+                    formatDateTimeAnswer(day, time, invite.locale)
+                  )
                 }
                 className="rounded-full bg-gradient-to-br from-blush to-blush-deep py-3.5 font-bold text-white disabled:opacity-40"
               >
-                {isLast ? "تمام!" : "بعدی"}
+                {isLast ? t.finish : t.next}
               </button>
             </div>
           )}
@@ -228,7 +236,7 @@ export default function InviteFlow({ invite }: { invite: FlowInvite }) {
               onClick={() => setIndex(index - 1)}
               className="mt-5 text-sm text-white/45 hover:text-white/70"
             >
-              ‹ سؤال قبلی
+              {t.previousQuestion}
             </button>
           )}
         </div>
@@ -237,13 +245,17 @@ export default function InviteFlow({ invite }: { invite: FlowInvite }) {
   }
 
   return (
-    <div className="relative grid min-h-dvh place-items-center overflow-hidden px-5 py-10">
+    <div
+      dir={dir}
+      lang={invite.locale}
+      className="relative grid min-h-dvh place-items-center overflow-hidden px-5 py-10"
+    >
       <Hearts />
       <div className={`${card} animate-pop-in relative z-10 text-center`}>
         <p className="text-5xl">🌹</p>
-        <h2 className="mt-4 text-3xl font-black text-blush">قرارمون شد!</h2>
+        <h2 className="mt-4 text-3xl font-black text-blush">{t.doneTitle}</h2>
         <p className="mt-2 text-sm text-white/65">
-          {invite.recipientName} جان، این‌ها انتخاب‌های خودت بود:
+          {t.doneSubtitle(invite.recipientName)}
         </p>
 
         <dl className="mt-6 flex flex-col gap-3 text-start">
@@ -253,7 +265,7 @@ export default function InviteFlow({ invite }: { invite: FlowInvite }) {
               className="rounded-2xl border border-white/12 bg-white/5 px-4 py-3"
             >
               <dt className="text-xs text-white/50">{row.prompt}</dt>
-              <dd className="mt-1 font-bold">{row.answer || "—"}</dd>
+              <dd className="mt-1 font-bold">{row.answer || t.empty}</dd>
             </div>
           ))}
         </dl>
@@ -265,13 +277,44 @@ export default function InviteFlow({ invite }: { invite: FlowInvite }) {
         )}
 
         <p className="mt-6 text-xs text-white/40">
-          {saving
-            ? "در حال ثبت…"
-            : saveError
-              ? saveError
-              : `${invite.senderName} خبردار شد ✓`}
+          {saving ? t.saving : saveError ? saveError : t.notified(invite.senderName)}
         </p>
       </div>
+    </div>
+  );
+}
+
+/**
+ * تاریخ انتخاب‌شده را هم‌زمان به شمسی و میلادی نشان می‌دهد.
+ *
+ * انتخابگر `<input type="date">` تقویم بومی مرورگر است و همیشه میلادی
+ * نشان می‌دهد؛ نمی‌شود آن را شمسی کرد. به‌جای ساختن یک تقویم دست‌ساز که
+ * دسترسی‌پذیری و پشتیبانی موبایلِ انتخابگر بومی را از دست بدهد، همان
+ * انتخابگر می‌ماند و ترجمهٔ زندهٔ تاریخ زیرش نشان داده می‌شود.
+ */
+function DualDatePreview({ day, locale }: { day: string; locale: Locale }) {
+  const date = new Date(`${day}T00:00:00`);
+  if (Number.isNaN(date.getTime())) return null;
+
+  const rows: Array<[string, string]> =
+    locale === "fa"
+      ? [
+          ["شمسی", formatJalali(date)],
+          ["میلادی", formatGregorian(date)],
+        ]
+      : [
+          ["Gregorian", formatGregorian(date)],
+          ["Jalali", formatJalali(date)],
+        ];
+
+  return (
+    <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3">
+      {rows.map(([label, value]) => (
+        <div key={label} className="flex items-baseline justify-between gap-3">
+          <span className="text-xs text-white/45">{label}</span>
+          <span className="text-sm font-bold">{value}</span>
+        </div>
+      ))}
     </div>
   );
 }
