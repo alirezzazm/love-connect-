@@ -52,6 +52,11 @@ sudo systemctl daemon-reload
 
 sudo cp deploy/nginx-love-connect.conf /etc/nginx/sites-available/love-connect
 sudo ln -s /etc/nginx/sites-available/love-connect /etc/nginx/sites-enabled/
+
+# map مربوط به وب‌سوکت. اگر روی این سرور از قبل چنین map ای هست (مثلاً برای
+# فروشگاه)، این خط را رد کن — nginx از تعریف تکراری خطا می‌گیرد.
+sudo cp deploy/nginx-upgrade-map.conf /etc/nginx/conf.d/love-connect-upgrade-map.conf
+
 sudo nginx -t && sudo systemctl reload nginx
 ```
 
@@ -89,6 +94,11 @@ sudo bash deploy/deploy.sh
 sudo sqlite3 /var/lib/love-connect/app.db ".backup /root/love-connect-$(date +%F).db"
 ```
 
+**`NEXT_PUBLIC_SITE_URL` را حتماً درست بگذار.** فقط برای ساختن لینک دعوت نیست؛
+ریدایرکت‌های ورود به پنل هم از روی همین ساخته می‌شوند. اگر خالی یا اشتباه باشد،
+اپ به هدرهای `X-Forwarded-*` برمی‌گردد و اگر آن‌ها هم نباشند کاربر بعد از ورود به
+آدرس داخلی سرور (`127.0.0.1:3001`) پرت می‌شود.
+
 **کوکی و HTTPS.** در حالت production کوکی نشست فقط روی HTTPS فرستاده می‌شود.
 چون Cloudflare جلوی سایت است، مرورگر HTTPS می‌بیند و مشکلی نیست — ولی حالت SSL
 در Cloudflare باید **Full** باشد، نه Flexible، وگرنه ممکن است حلقهٔ ریدایرکت
@@ -97,6 +107,10 @@ sudo sqlite3 /var/lib/love-connect/app.db ".backup /root/love-connect-$(date +%F
 **سرویس بالا نمی‌آید؟** اول `journalctl -u love-connect -n 50` را ببین.
 دو علت رایج: مسیر اشتباه node در `ExecStart`، و نبودن `.next/standalone/server.js`
 (که `deploy.sh` خودش قبلش گیر می‌دهد).
+
+**IPv6.** خط `listen [::]:80;` در کانفیگ nginx به‌صورت پیش‌فرض کامنت است. اگر
+سرورت IPv6 دارد بازش کن؛ اگر ندارد و بازش کنی، nginx با
+«Address family not supported by protocol» بالا نمی‌آید.
 
 **پورت.** اگر ۳۰۰۱ روی سرور اشغال است (`sudo ss -tlnp | grep 3001`)، هم در
 `deploy/love-connect.service` و هم در `deploy/nginx-love-connect.conf` عوضش کن.
