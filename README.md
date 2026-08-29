@@ -39,6 +39,12 @@
 Next.js 15 (App Router) · React 19 · TypeScript · Tailwind CSS 4 ·
 Prisma + SQLite · jose (نشست JWT در کوکی `httpOnly`)
 
+## استقرار
+
+راهنمای کامل در [`DEPLOY.md`](DEPLOY.md). خلاصه: اپ روی `dl193.ir` می‌نشیند،
+پشت nginx، روی پورت ۳۰۰۱، با systemd. استقرار خودکار از طریق GitHub Actions
+هم آماده است.
+
 ## راه‌اندازی
 
 ```bash

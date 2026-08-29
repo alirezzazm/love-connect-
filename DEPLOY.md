@@ -32,12 +32,12 @@
 sudo mkdir -p /var/www/love-connect
 sudo chown -R "$USER" /var/www/love-connect
 
-git clone https://github.com/alirezzazm/tattoo-shop /tmp/lc-src
-cd /tmp/lc-src
-git checkout claude/dating-romance-project-e5is7f
-cp -r date-invite/. /var/www/love-connect/
+git clone https://github.com/alirezzazm/love-connect- /var/www/love-connect
 cd /var/www/love-connect
 ```
+
+> اگر ترجیح می‌دهی دستی کاری نکنی، workflow گیت‌هاب همین کارها را خودش
+> انجام می‌دهد. بخش «استقرار خودکار» در انتهای همین فایل.
 
 ### ۲. ساختن فایل تنظیمات
 
@@ -150,8 +150,36 @@ sudo nginx -t && sudo systemctl reload nginx
 
 ```bash
 cd /var/www/love-connect
+git pull
 sudo bash deploy/deploy.sh
 ```
+
+## استقرار خودکار (بدون ssh زدن دستی)
+
+در ریپو یک workflow هست که کل استقرار را از طریق GitHub Actions انجام می‌دهد:
+کد را می‌فرستد، بیلد می‌کند، سرویس را ری‌استارت می‌کند، سلامتش را تست می‌کند و
+در صورت انتخاب، دامنه را هم جابه‌جا می‌کند.
+
+یک‌بار این‌ها را انجام بده:
+
+1. یک کلید استقرار بساز و روی سرور مجازش کن:
+
+   ```bash
+   ssh-keygen -t ed25519 -f ~/.ssh/love-connect-deploy -N ""
+   ssh-copy-id -i ~/.ssh/love-connect-deploy.pub <کاربر>@87.248.155.28
+   ```
+
+2. در گیت‌هاب → Settings → Secrets and variables → Actions سه سکرت بساز:
+   `DEPLOY_HOST`، `DEPLOY_USER`، `DEPLOY_SSH_KEY` (محتوای کلید خصوصی).
+
+3. `/etc/love-connect.env` را روی سرور بساز (گام ۲ بالا). رمزها هیچ‌وقت از
+   گیت‌هاب فرستاده نمی‌شوند.
+
+بعد از آن، هر بار: تب **Actions** → workflow را انتخاب کن → **Run workflow**.
+بار اول هر دو گزینه را تیک بزن؛ دفعات بعد هیچ‌کدام لازم نیست.
+
+کاربری که وارد می‌شود باید `sudo` بدون رمز داشته باشد، وگرنه اسکریپت وسط کار
+منتظر رمز می‌ماند.
 
 ## نکته‌ها
 
