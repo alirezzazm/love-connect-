@@ -1,0 +1,192 @@
+# استقرار خودکار روی سرور، از طریق GitHub Actions.
+#
+# چرا این فایل هست: محیطی که Claude در آن اجرا می‌شود پورت ۲۲ را به هیچ
+# مقصدی باز نمی‌کند، پس نمی‌تواند مستقیم ssh بزند. اما رانرهای گیت‌هاب
+# دسترسی شبکهٔ کامل دارند. با این workflow، گیت‌هاب به‌جای ما به سرور وصل
+# می‌شود و استقرار را انجام می‌دهد.
+#
+# ─── نصب ───────────────────────────────────────────────────────────────
+#
+# ۱. این فایل را در ریپو اینجا بگذار:  .github/workflows/deploy-love-connect.yml
+#
+# ۲. یک کلید مخصوص استقرار بساز (روی کامپیوتر خودت، نه سرور):
+#
+#      ssh-keygen -t ed25519 -f ~/.ssh/love-connect-deploy -N "" -C "deploy@love-connect"
+#
+#    کلید عمومی را روی سرور مجاز کن:
+#
+#      ssh-copy-id -i ~/.ssh/love-connect-deploy.pub <کاربر>@87.248.155.28
+#
+# ۳. در گیت‌هاب: Settings → Secrets and variables → Actions → New secret
+#
+#      DEPLOY_HOST      87.248.155.28
+#      DEPLOY_USER      کاربری که روی سرور وارد می‌شود
+#      DEPLOY_SSH_KEY   کل محتوای فایل ~/.ssh/love-connect-deploy (کلید خصوصی)
+#      DEPLOY_PORT      اختیاری، اگر ssh روی پورت غیر ۲۲ است
+#
+# ۴. تب Actions → این workflow → Run workflow → برنچ را انتخاب کن → اجرا
+#
+# ─── پیش‌نیازهای روی سرور ────────────────────────────────────────────────
+#
+# • کاربر باید sudo بدون رمز داشته باشد (یا خودِ root باشد)، وگرنه اسکریپت
+#   وسط کار منتظر رمز می‌ماند و تایم‌اوت می‌شود.
+# • /etc/love-connect.env باید از قبل ساخته شده باشد. رمزها هیچ‌وقت از
+#   گیت‌هاب فرستاده نمی‌شوند — یک بار دستی روی سرور ساخته می‌شود.
+# • Node.js ۲۰ به بالا و nginx نصب باشند.
+
+name: استقرار اپ دعوت به قرار
+
+on:
+  # فقط دستی. هیچ‌وقت خودبه‌خود روی push اجرا نمی‌شود.
+  workflow_dispatch:
+    inputs:
+      install_service:
+        description: "نصب یونیت systemd (فقط بار اول لازم است)"
+        type: boolean
+        default: false
+      switch_nginx:
+        description: "گرفتن dl193.ir از فروشگاه و دادنش به این اپ (برگشت‌پذیر)"
+        type: boolean
+        default: false
+
+concurrency:
+  # دو استقرار هم‌زمان روی یک سرور یعنی بیلد نیمه‌کاره
+  group: deploy-love-connect
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: آماده‌سازی کلید ssh
+        env:
+          KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          HOST: ${{ secrets.DEPLOY_HOST }}
+          PORT: ${{ secrets.DEPLOY_PORT }}
+        run: |
+          set -euo pipefail
+          test -n "$KEY"  || { echo "::error::سکرت DEPLOY_SSH_KEY تعریف نشده"; exit 1; }
+          test -n "$HOST" || { echo "::error::سکرت DEPLOY_HOST تعریف نشده"; exit 1; }
+
+          mkdir -p ~/.ssh
+          printf '%s\n' "$KEY" > ~/.ssh/id_deploy
+          chmod 600 ~/.ssh/id_deploy
+
+          # اثر انگشت میزبان در اولین اتصال پذیرفته می‌شود. اگر می‌خواهی
+          # سخت‌گیرتر باشد، خروجی ssh-keyscan را یک بار خودت بررسی کن و
+          # به‌صورت سکرت ثابت نگه دار.
+          ssh-keyscan -p "${PORT:-22}" -H "$HOST" >> ~/.ssh/known_hosts 2>/dev/null
+
+      - name: فرستادن کد به سرور
+        env:
+          HOST: ${{ secrets.DEPLOY_HOST }}
+          USER: ${{ secrets.DEPLOY_USER }}
+          PORT: ${{ secrets.DEPLOY_PORT }}
+        run: |
+          set -euo pipefail
+          ssh -i ~/.ssh/id_deploy -p "${PORT:-22}" "$USER@$HOST" \
+            'sudo mkdir -p /var/www/love-connect /var/lib/love-connect && sudo chown -R $(id -u):$(id -g) /var/www/love-connect'
+
+          # node_modules و .next روی سرور ساخته می‌شوند و نباید پاک شوند،
+          # پس هم از فرستادن و هم از --delete کنار گذاشته می‌شوند.
+          rsync -az --delete \
+            --exclude node_modules --exclude .next --exclude '*.db' \
+            -e "ssh -i ~/.ssh/id_deploy -p ${PORT:-22}" \
+            date-invite/ "$USER@$HOST:/var/www/love-connect/"
+
+      - name: نصب یونیت systemd
+        if: inputs.install_service
+        env:
+          HOST: ${{ secrets.DEPLOY_HOST }}
+          USER: ${{ secrets.DEPLOY_USER }}
+          PORT: ${{ secrets.DEPLOY_PORT }}
+        run: |
+          set -euo pipefail
+          ssh -i ~/.ssh/id_deploy -p "${PORT:-22}" "$USER@$HOST" 'bash -seuo pipefail' <<'REMOTE'
+            test -f /etc/love-connect.env || {
+              echo "::error::/etc/love-connect.env روی سرور نیست. اول از روی deploy/love-connect.env.example بسازش."
+              exit 1
+            }
+            cd /var/www/love-connect
+            sudo cp deploy/love-connect.service /etc/systemd/system/
+            sudo systemctl daemon-reload
+            sudo systemctl enable love-connect
+          REMOTE
+
+      - name: بیلد و راه‌اندازی
+        env:
+          HOST: ${{ secrets.DEPLOY_HOST }}
+          USER: ${{ secrets.DEPLOY_USER }}
+          PORT: ${{ secrets.DEPLOY_PORT }}
+        run: |
+          set -euo pipefail
+          ssh -i ~/.ssh/id_deploy -p "${PORT:-22}" "$USER@$HOST" 'bash -seuo pipefail' <<'REMOTE'
+            cd /var/www/love-connect
+            sudo bash deploy/deploy.sh
+          REMOTE
+
+      - name: تست سلامت اپ
+        env:
+          HOST: ${{ secrets.DEPLOY_HOST }}
+          USER: ${{ secrets.DEPLOY_USER }}
+          PORT: ${{ secrets.DEPLOY_PORT }}
+        run: |
+          set -euo pipefail
+          ssh -i ~/.ssh/id_deploy -p "${PORT:-22}" "$USER@$HOST" 'bash -seuo pipefail' <<'REMOTE'
+            code=$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:3001/ || true)
+            echo "پاسخ اپ روی ۳۰۰۱: $code"
+            test "$code" = "200" || { echo "::error::اپ بالا نیامد"; sudo journalctl -u love-connect -n 40 --no-pager; exit 1; }
+          REMOTE
+
+      # عمداً بعد از تست سلامت: دامنه فقط وقتی جابه‌جا می‌شود که اپ
+      # ثابت کرده باشد بالا آمده. وگرنه سایت را روی یک اپ خراب می‌بردیم.
+      - name: جابه‌جا کردن دامنه از فروشگاه به این اپ
+        if: inputs.switch_nginx
+        env:
+          HOST: ${{ secrets.DEPLOY_HOST }}
+          USER: ${{ secrets.DEPLOY_USER }}
+          PORT: ${{ secrets.DEPLOY_PORT }}
+        run: |
+          set -euo pipefail
+          ssh -i ~/.ssh/id_deploy -p "${PORT:-22}" "$USER@$HOST" 'bash -seuo pipefail' <<'REMOTE'
+            cd /var/www/love-connect
+
+            # سایت‌هایی که الان این دامنه را ادعا می‌کنند، به‌جز خودمان
+            current=$(grep -rl "dl193\.ir" /etc/nginx/sites-enabled/ 2>/dev/null | grep -v love-connect || true)
+            if [ -n "$current" ]; then
+              echo "این سایت‌ها دامنه را در دست دارند و غیرفعال می‌شوند:"
+              echo "$current"
+              # فقط symlink برداشته می‌شود؛ فایل در sites-available می‌ماند
+              for link in $current; do
+                [ -L "$link" ] && sudo rm "$link" && echo "  برداشته شد: $link"
+              done
+            fi
+
+            sudo cp deploy/nginx-love-connect.conf /etc/nginx/sites-available/love-connect
+            sudo ln -sfn /etc/nginx/sites-available/love-connect /etc/nginx/sites-enabled/love-connect
+
+            # اگر map از قبل جای دیگری تعریف شده، تعریف دوباره خطا می‌دهد
+            if ! grep -rq 'connection_upgrade' /etc/nginx/conf.d/ /etc/nginx/nginx.conf 2>/dev/null; then
+              sudo cp deploy/nginx-upgrade-map.conf /etc/nginx/conf.d/love-connect-upgrade-map.conf
+            fi
+
+            sudo nginx -t
+            sudo systemctl reload nginx
+            echo "دامنه جابه‌جا شد."
+          REMOTE
+
+      - name: خلاصه
+        if: always()
+        run: |
+          {
+            echo "### استقرار اپ دعوت به قرار"
+            echo ""
+            echo "- نصب یونیت systemd: \`${{ inputs.install_service }}\`"
+            echo "- جابه‌جایی دامنه: \`${{ inputs.switch_nginx }}\`"
+            echo ""
+            echo "اگر دامنه جابه‌جا شد ولی سایت هنوز خطای ۵۲۵ می‌دهد، مشکل از TLS بین"
+            echo "کلادفلر و سرور است، نه از اپ. \`DEPLOY.md\` بخش SSL را ببین."
+          } >> "$GITHUB_STEP_SUMMARY"
