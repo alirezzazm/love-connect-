@@ -1,6 +1,8 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import HeartBurst, { type Burst } from "@/components/HeartBurst";
+import Hearts from "@/components/Hearts";
 import RunawayNo from "@/components/RunawayNo";
 import {
   DIRECTION,
@@ -40,6 +42,8 @@ export default function InviteFlow({ invite }: { invite: FlowInvite }) {
   const lastDodgeAt = useRef(0);
 
   const [stage, setStage] = useState<"ask" | "questions" | "done">("ask");
+  /** بین زدن «بله» و رفتن به مرحلهٔ بعد، تا پاشش قلب‌ها دیده شود */
+  const [accepting, setAccepting] = useState(false);
   const [index, setIndex] = useState(0);
   const [dodges, setDodges] = useState(0);
   const [answers, setAnswers] = useState<Record<number, string>>({});
@@ -47,6 +51,38 @@ export default function InviteFlow({ invite }: { invite: FlowInvite }) {
   const [time, setTime] = useState("");
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState("");
+
+  const yesRef = useRef<HTMLButtonElement>(null);
+  const doneCardRef = useRef<HTMLDivElement>(null);
+  const burstId = useRef(0);
+  const [bursts, setBursts] = useState<Burst[]>([]);
+  /** تایمرهای پاک‌سازی، تا اگر کاربر وسط کار صفحه را عوض کرد نشت نکنند */
+  const burstTimers = useRef<number[]>([]);
+
+  const addBurst = useCallback((x: number, y: number, big = false) => {
+    const id = ++burstId.current;
+    setBursts((list) => [...list, { id, x, y, big }]);
+    // کمی بیشتر از خودِ انیمیشن (۹۰۰ms + تأخیر پخش‌شدن)
+    const timer = window.setTimeout(() => {
+      setBursts((list) => list.filter((b) => b.id !== id));
+    }, 1150);
+    burstTimers.current.push(timer);
+  }, []);
+
+  useEffect(
+    () => () => {
+      burstTimers.current.forEach(window.clearTimeout);
+    },
+    []
+  );
+
+  /** لحظهٔ رسیدن به صفحهٔ پایانی: یک پاشش بزرگ از وسط کارت */
+  useEffect(() => {
+    if (stage !== "done") return;
+    const box = doneCardRef.current?.getBoundingClientRect();
+    if (!box) return;
+    addBurst(box.width / 2, box.height / 3, true);
+  }, [stage, addBurst]);
 
   const question = invite.questions[index];
   const taunt =
@@ -108,13 +144,19 @@ export default function InviteFlow({ invite }: { invite: FlowInvite }) {
       <div
         dir={dir}
         lang={invite.locale}
-        className="grid min-h-dvh place-items-center px-5 py-10"
+        className="relative grid min-h-dvh place-items-center overflow-hidden px-5 py-10"
       >
+        <Orbs />
+        <Hearts variant="ambient" />
         <div
           ref={cardRef}
-          className={`${card} animate-pop-in relative overflow-hidden text-center`}
+          className={`${card} animate-pop-in relative z-10 overflow-hidden text-center`}
         >
-          <p className="text-sm text-white/55">
+          <HeartBurst bursts={bursts} />
+
+          <p className="animate-heartbeat text-4xl leading-none">💗</p>
+
+          <p className="mt-3 text-sm text-white/55">
             {t.intro(invite.recipientName, invite.senderName)}
           </p>
           <h1 className="mt-4 text-3xl font-black leading-relaxed sm:text-4xl">
@@ -125,13 +167,28 @@ export default function InviteFlow({ invite }: { invite: FlowInvite }) {
 
           <div className="mt-6 flex flex-wrap items-center justify-center gap-4">
             <button
+              ref={yesRef}
               type="button"
+              disabled={accepting}
               onClick={() => {
                 if (Date.now() - lastDodgeAt.current < 350) return;
-                setStage("questions");
+                if (accepting) return;
+
+                // پاشش از خودِ دکمه، بعد کمی مکث تا دیده شود و بعد مرحلهٔ بعد
+                const box = cardRef.current?.getBoundingClientRect();
+                const btn = yesRef.current?.getBoundingClientRect();
+                if (box && btn) {
+                  addBurst(
+                    btn.left - box.left + btn.width / 2,
+                    btn.top - box.top + btn.height / 2,
+                    true
+                  );
+                }
+                setAccepting(true);
+                window.setTimeout(() => setStage("questions"), 420);
               }}
-              className="rounded-full bg-gradient-to-br from-blush to-blush-deep px-8 py-3.5 text-lg font-bold text-white shadow-lg shadow-blush/30 transition-transform"
-              style={{ transform: `scale(${yesScale})` }}
+              className="animate-glow animate-sheen relative overflow-hidden rounded-full bg-gradient-to-br from-blush to-blush-deep px-8 py-3.5 text-lg font-bold text-white transition-transform duration-300"
+              style={{ transform: `scale(${accepting ? yesScale * 1.15 : yesScale})` }}
             >
               {t.yes}
             </button>
@@ -139,9 +196,10 @@ export default function InviteFlow({ invite }: { invite: FlowInvite }) {
             <RunawayNo
               label={t.no}
               boundsRef={cardRef}
-              onDodge={() => {
+              onDodge={(center) => {
                 lastDodgeAt.current = Date.now();
                 setDodges((d) => d + 1);
+                addBurst(center.x, center.y);
               }}
             />
           </div>
@@ -157,15 +215,20 @@ export default function InviteFlow({ invite }: { invite: FlowInvite }) {
       <div
         dir={dir}
         lang={invite.locale}
-        className="grid min-h-dvh place-items-center px-5 py-10"
+        className="relative grid min-h-dvh place-items-center overflow-hidden px-5 py-10"
       >
-        <div key={question.step} className={`${card} animate-pop-in`}>
+        <Orbs />
+        <Hearts variant="ambient" count={7} />
+        <div
+          key={question.step}
+          className={`${card} animate-pop-in relative z-10`}
+        >
           <div className="mb-5 flex items-center gap-2">
             {invite.questions.map((q, i) => (
               <span
                 key={q.step}
-                className={`h-1.5 flex-1 rounded-full ${
-                  i <= index ? "bg-blush" : "bg-white/15"
+                className={`h-1.5 flex-1 rounded-full transition-colors duration-500 ${
+                  i <= index ? "bg-blush shadow-sm shadow-blush/50" : "bg-white/15"
                 }`}
               />
             ))}
@@ -175,12 +238,17 @@ export default function InviteFlow({ invite }: { invite: FlowInvite }) {
 
           {question.type === "choice" ? (
             <ul className="mt-6 flex flex-col gap-3">
-              {question.options.map((option) => (
-                <li key={option}>
+              {question.options.map((option, i) => (
+                <li
+                  key={option}
+                  className="animate-rise-in"
+                  // ورود پلکانی: هر گزینه کمی بعد از قبلی می‌آید
+                  style={{ animationDelay: `${i * 60}ms` }}
+                >
                   <button
                     type="button"
                     onClick={() => answerAndAdvance(option)}
-                    className="w-full rounded-2xl border border-white/15 bg-white/5 px-5 py-4 text-start text-base transition hover:border-blush hover:bg-blush/15"
+                    className="w-full rounded-2xl border border-white/15 bg-white/5 px-5 py-4 text-start text-base transition duration-200 hover:-translate-y-0.5 hover:border-blush hover:bg-blush/15 hover:shadow-lg hover:shadow-blush/20 active:translate-y-0"
                   >
                     {option}
                   </button>
@@ -250,19 +318,25 @@ export default function InviteFlow({ invite }: { invite: FlowInvite }) {
       lang={invite.locale}
       className="relative grid min-h-dvh place-items-center overflow-hidden px-5 py-10"
     >
-      <Hearts />
-      <div className={`${card} animate-pop-in relative z-10 text-center`}>
-        <p className="text-5xl">🌹</p>
+      <Orbs />
+      <Hearts variant="celebrate" />
+      <div
+        ref={doneCardRef}
+        className={`${card} animate-pop-in relative z-10 overflow-hidden text-center`}
+      >
+        <HeartBurst bursts={bursts} />
+        <p className="animate-heartbeat text-5xl leading-none">🌹</p>
         <h2 className="mt-4 text-3xl font-black text-blush">{t.doneTitle}</h2>
         <p className="mt-2 text-sm text-white/65">
           {t.doneSubtitle(invite.recipientName)}
         </p>
 
         <dl className="mt-6 flex flex-col gap-3 text-start">
-          {summary.map((row) => (
+          {summary.map((row, i) => (
             <div
               key={row.step}
-              className="rounded-2xl border border-white/12 bg-white/5 px-4 py-3"
+              className="animate-rise-in rounded-2xl border border-white/12 bg-white/5 px-4 py-3"
+              style={{ animationDelay: `${120 + i * 90}ms` }}
             >
               <dt className="text-xs text-white/50">{row.prompt}</dt>
               <dd className="mt-1 font-bold">{row.answer || t.empty}</dd>
@@ -319,35 +393,29 @@ function DualDatePreview({ day, locale }: { day: string; locale: Locale }) {
   );
 }
 
-/** قلب‌های شناور صفحهٔ پایانی — فقط تزئینی */
-function Hearts() {
-  const hearts = useMemo(
-    () =>
-      Array.from({ length: 14 }, (_, i) => ({
-        id: i,
-        left: `${Math.random() * 100}%`,
-        delay: `${Math.random() * 6}s`,
-        duration: `${6 + Math.random() * 5}s`,
-        size: `${14 + Math.random() * 22}px`,
-      })),
-    []
-  );
+/**
+ * لکه‌های نورِ آرامِ پس‌زمینه. فقط عمق می‌دهند و پشت کارت می‌مانند؛
+ * بلور سنگین است، پس تعدادشان کم و ثابت نگه داشته شده.
+ */
+function Orbs() {
+  const orbs = [
+    { cls: "start-[8%] top-[12%] h-56 w-56 bg-blush/20", dur: "17s", delay: "0s" },
+    { cls: "end-[6%] top-[8%] h-64 w-64 bg-lilac/20", dur: "21s", delay: "-6s" },
+    {
+      cls: "start-[30%] bottom-[6%] h-48 w-48 bg-blush-deep/20",
+      dur: "24s",
+      delay: "-12s",
+    },
+  ];
 
   return (
-    <div aria-hidden className="pointer-events-none absolute inset-0">
-      {hearts.map((h) => (
+    <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden">
+      {orbs.map((o, i) => (
         <span
-          key={h.id}
-          className="heart-rise absolute bottom-0"
-          style={{
-            left: h.left,
-            fontSize: h.size,
-            animationDelay: h.delay,
-            animationDuration: h.duration,
-          }}
-        >
-          ❤
-        </span>
+          key={i}
+          className={`animate-orb absolute rounded-full blur-3xl ${o.cls}`}
+          style={{ animationDuration: o.dur, animationDelay: o.delay }}
+        />
       ))}
     </div>
   );

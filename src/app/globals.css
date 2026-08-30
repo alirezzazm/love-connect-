@@ -59,7 +59,7 @@ body {
     transform: translateY(0) scale(0.6);
   }
   15% {
-    opacity: 1;
+    opacity: var(--peak-opacity, 1);
   }
   100% {
     opacity: 0;
@@ -70,9 +70,155 @@ body {
   animation: float-up linear forwards;
 }
 
+/* تاب خوردن افقی. روی یک عنصر بیرونی می‌نشیند تا با بالا رفتن قاطی نشود:
+   دو انیمیشن روی یک عنصر سرِ transform با هم دعوا می‌کنند. */
+@keyframes sway {
+  0%,
+  100% {
+    transform: translateX(-10px);
+  }
+  50% {
+    transform: translateX(10px);
+  }
+}
+.heart-sway {
+  animation: sway ease-in-out infinite alternate;
+}
+
+/* ضربان قلب بالای سؤال اول */
+@keyframes heartbeat {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  14% {
+    transform: scale(1.18);
+  }
+  28% {
+    transform: scale(1);
+  }
+  42% {
+    transform: scale(1.12);
+  }
+  56% {
+    transform: scale(1);
+  }
+}
+.animate-heartbeat {
+  animation: heartbeat 1.6s ease-in-out infinite;
+}
+
+/* قلب‌هایی که از یک نقطه به بیرون می‌پاشند — جهت هرکدام با متغیر تعیین می‌شود */
+@keyframes burst-out {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.3) rotate(0deg);
+  }
+  12% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(calc(-50% + var(--dx)), calc(-50% + var(--dy)))
+      scale(1.15) rotate(var(--rot, 0deg));
+  }
+}
+.heart-burst {
+  animation: burst-out 900ms cubic-bezier(0.16, 0.84, 0.44, 1) forwards;
+}
+
+/* برق کوتاهی که روی دکمهٔ «بله» رد می‌شود */
+@keyframes sheen {
+  0% {
+    transform: translateX(-130%) skewX(-18deg);
+  }
+  55%,
+  100% {
+    transform: translateX(230%) skewX(-18deg);
+  }
+}
+.animate-sheen::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.42),
+    transparent
+  );
+  animation: sheen 2.8s ease-in-out infinite;
+  pointer-events: none;
+}
+
+/* نفس کشیدن هالهٔ دور دکمه */
+@keyframes glow {
+  0%,
+  100% {
+    box-shadow: 0 10px 30px -8px rgba(255, 92, 138, 0.45);
+  }
+  50% {
+    box-shadow: 0 14px 44px -6px rgba(255, 92, 138, 0.8);
+  }
+}
+.animate-glow {
+  animation: glow 2.4s ease-in-out infinite;
+}
+
+/* لکه‌های نور پس‌زمینه، برای عمق */
+@keyframes orb-drift {
+  0%,
+  100% {
+    transform: translate(0, 0) scale(1);
+  }
+  33% {
+    transform: translate(24px, -30px) scale(1.12);
+  }
+  66% {
+    transform: translate(-20px, 18px) scale(0.94);
+  }
+}
+.animate-orb {
+  animation: orb-drift ease-in-out infinite;
+}
+
+/* ورود پلکانی گزینه‌ها */
+@keyframes rise-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.animate-rise-in {
+  animation: rise-in 0.34s ease-out both;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .animate-pop-in,
-  .heart-rise {
+  .heart-rise,
+  .heart-sway,
+  .animate-heartbeat,
+  .heart-burst,
+  .animate-glow,
+  .animate-orb,
+  .animate-rise-in,
+  .animate-sheen::after {
     animation: none;
+  }
+  /* بدون انیمیشن، عناصری که با both شروع می‌شوند باید دیده شوند */
+  .animate-pop-in,
+  .animate-rise-in {
+    opacity: 1;
+  }
+  /* قلب‌های شناور و برقِ دکمه بدون حرکت فقط نویز بصری‌اند */
+  .heart-rise,
+  .heart-burst,
+  .animate-sheen::after {
+    display: none;
   }
 }

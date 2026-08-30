@@ -64,6 +64,19 @@ export function formatGregorian(date: Date): string {
 }
 
 /**
+ * یک تکه متن را از جهتِ متنِ اطرافش جدا می‌کند.
+ *
+ * U+2068 (FSI) تا U+2069 (PDI): هرچه داخلشان باشد جهتش را از اولین حرفِ
+ * خودش می‌گیرد، نه از پاراگراف. بدون این، پرانتزها — که کاراکترِ خنثی‌اند —
+ * در متن راست‌به‌چپ آینه می‌شوند و تاریخ میلادی این‌طور درمی‌آید:
+ * «۷ شهریور ۱۴۰۵ (Saturday,» و «August 29, 2026)». با ایزوله کردنِ کلِ
+ * گروهِ پرانتزدار، پرانتز درست دور همان تکه می‌نشیند.
+ */
+function isolate(text: string): string {
+  return `⁨${text}⁩`;
+}
+
+/**
  * تاریخ به هر دو تقویم. تقویم آشنای زبانِ صفحه اول می‌آید و آن یکی داخل
  * پرانتز. اگر ورودی نامعتبر باشد خودش را برمی‌گرداند تا چیزی گم نشود.
  */
@@ -73,8 +86,8 @@ export function formatDualDate(value: string, locale: Locale): string {
   const jalali = formatJalali(date);
   const gregorian = formatGregorian(date);
   return locale === "fa"
-    ? `${jalali} (${gregorian})`
-    : `${gregorian} (${jalali})`;
+    ? `${jalali} ${isolate(`(${gregorian})`)}`
+    : `${gregorian} ${isolate(`(${jalali})`)}`;
 }
 
 /** ساعت با ارقام همان زبان: ۱۸:۳۰ یا 6:30 PM */
@@ -123,16 +136,19 @@ export function formatDualDateTime(date: Date): string {
     dateStyle: "medium",
     timeStyle: "short",
   }).format(date);
-  return `${jalali} — ${gregorian}`;
+  // پنل ادمین راست‌به‌چپ است، پس تکهٔ لاتین باید ایزوله شود
+  return `${jalali} — ${isolate(gregorian)}`;
 }
 
 /** فقط تاریخ (بدون ساعت) به هر دو تقویم، برای پنل ادمین */
 export function formatDualDateOnly(date: Date): string {
-  return `${new Intl.DateTimeFormat("fa-IR-u-ca-persian", {
+  const jalali = new Intl.DateTimeFormat("fa-IR-u-ca-persian", {
     dateStyle: "medium",
-  }).format(date)} — ${new Intl.DateTimeFormat("en-US-u-ca-gregory", {
+  }).format(date);
+  const gregorian = new Intl.DateTimeFormat("en-US-u-ca-gregory", {
     dateStyle: "medium",
-  }).format(date)}`;
+  }).format(date);
+  return `${jalali} — ${isolate(gregorian)}`;
 }
 
 // ──────────────────────────── متن‌های صفحهٔ دعوت ────────────────────────────

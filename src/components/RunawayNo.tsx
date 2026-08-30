@@ -34,7 +34,11 @@ export default function RunawayNo({
   label: string;
   /** کادری که دکمه اجازهٔ جابه‌جایی داخلش را دارد (خودِ کارت) */
   boundsRef: React.RefObject<HTMLElement | null>;
-  onDodge: () => void;
+  /**
+   * بعد از هر جاخالی صدا زده می‌شود. مرکز دکمه — نسبت به همان کادر — را
+   * می‌دهد تا والد بتواند دقیقاً همان‌جا قلب بپاشد.
+   */
+  onDodge: (center: Point) => void;
 }) {
   const placeholderRef = useRef<HTMLSpanElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
@@ -90,7 +94,12 @@ export default function RunawayNo({
       };
 
       setOffset(next);
-      onDodge();
+      // جایی که دکمه *به آن* می‌رود، نه جایی که بود: قلب‌ها باید همان‌جا
+      // بپاشند که چشم دنبالش می‌رود.
+      onDodge({
+        x: home.x + next.x + rect.width / 2,
+        y: home.y + next.y + rect.height / 2,
+      });
 
       if (returnTimer.current) window.clearTimeout(returnTimer.current);
       returnTimer.current = window.setTimeout(
