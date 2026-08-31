@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { LOCALE_LABEL } from "@/lib/i18n";
 import { inviteUrl } from "@/lib/site";
+import { resolveTheme } from "@/lib/themes";
 import type { Locale } from "@/lib/types";
 
 export type InviteSummary = {
@@ -11,6 +12,7 @@ export type InviteSummary = {
   slug: string;
   recipientName: string;
   locale: Locale;
+  theme: string;
   active: boolean;
   views: number;
   createdAt: string;
@@ -52,9 +54,23 @@ export default function InviteRow({ invite }: { invite: InviteSummary }) {
               {status.label}
             </span>
           </p>
-          <p className="mt-1 text-xs text-white/45">
-            /d/{invite.slug} — {LOCALE_LABEL[invite.locale]} —{" "}
-            {invite.questionCount} سؤال — {invite.views} بازدید
+          <p className="mt-1 flex flex-wrap items-center gap-x-1.5 text-xs text-white/45">
+            <span>/d/{invite.slug}</span>
+            <span>—</span>
+            <span>{LOCALE_LABEL[invite.locale]}</span>
+            <span>—</span>
+            <span className="inline-flex items-center gap-1">
+              <span
+                aria-hidden
+                className="h-2 w-2 rounded-full"
+                style={{ background: resolveTheme(invite.theme).swatch[0] }}
+              />
+              {resolveTheme(invite.theme).label[invite.locale]}
+            </span>
+            <span>—</span>
+            <span>{invite.questionCount} سؤال</span>
+            <span>—</span>
+            <span>{invite.views} بازدید</span>
           </p>
         </div>
 

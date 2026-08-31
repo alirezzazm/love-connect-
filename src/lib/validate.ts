@@ -1,4 +1,5 @@
 import { isLocale } from "./i18n";
+import { DEFAULT_THEME, isThemeId } from "./themes";
 import type { InviteInput, QuestionInput, QuestionType } from "./types";
 
 const TYPES: QuestionType[] = ["choice", "datetime"];
@@ -34,6 +35,13 @@ export function parseInviteInput(
     return { ok: false, error: "زبان انتخاب‌شده معتبر نیست." };
   }
   const locale = isLocale(body.locale) ? body.locale : "fa";
+
+  // تم هم مثل زبان از فهرست بسته می‌آید: رنگ‌هایش مستقیم داخل style صفحه
+  // می‌نشینند، پس نباید هر رشته‌ای بتواند آنجا برود.
+  if (body.theme !== undefined && !isThemeId(body.theme)) {
+    return { ok: false, error: "تم انتخاب‌شده معتبر نیست." };
+  }
+  const theme = isThemeId(body.theme) ? body.theme : DEFAULT_THEME;
 
   const headline = str(body.headline);
   if (!headline) return { ok: false, error: "متن سؤال اول را بنویس." };
@@ -88,6 +96,7 @@ export function parseInviteInput(
       recipientName,
       senderName,
       locale,
+      theme,
       headline,
       closingNote,
       active: body.active !== false,

@@ -8,6 +8,7 @@ import {
   DEFAULT_QUESTIONS,
 } from "@/lib/defaults";
 import { LOCALES, LOCALE_LABEL } from "@/lib/i18n";
+import { THEMES, THEME_IDS, resolveTheme } from "@/lib/themes";
 import type {
   InviteInput,
   Locale,
@@ -180,6 +181,63 @@ export default function InviteForm({
           <b className="text-white/70">هر دو تقویم شمسی و میلادی</b> نمایش داده
           می‌شود. سؤال‌ها و متن‌های زیر را خودت به همان زبان بنویس — تا وقتی
           دست‌نخورده باشند، با عوض کردن زبان خودشان ترجمه می‌شوند.
+        </p>
+      </div>
+
+      <div className="flex flex-col gap-3 rounded-2xl border border-white/12 bg-white/5 p-4">
+        <div className="flex flex-wrap items-baseline justify-between gap-2">
+          <span className="text-sm text-white/70">تم صفحهٔ دعوت</span>
+          <span className="text-xs text-white/40">
+            انتخاب‌شده: {resolveTheme(form.theme).label[form.locale]}
+          </span>
+        </div>
+
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+          {THEME_IDS.map((id) => {
+            const th = THEMES[id];
+            const selected = form.theme === id;
+            return (
+              <button
+                key={id}
+                type="button"
+                onClick={() => patch({ theme: id })}
+                aria-pressed={selected}
+                className={`flex flex-col gap-2 rounded-2xl border p-3 text-start transition ${
+                  selected
+                    ? "border-blush bg-blush/15"
+                    : "border-white/12 hover:border-white/30 hover:bg-white/5"
+                }`}
+              >
+                {/* پیش‌نمایش کوچک: همان رنگ‌هایی که طرف مقابل می‌بیند */}
+                <span
+                  className="flex h-12 items-center justify-center gap-1 rounded-xl"
+                  style={{ background: th.background }}
+                >
+                  <span className="text-lg leading-none">{th.heroEmoji}</span>
+                  <span
+                    className="h-5 w-8 rounded-full"
+                    style={{
+                      background: `linear-gradient(135deg, ${th.swatch[0]}, ${th.swatch[1]})`,
+                    }}
+                  />
+                </span>
+                <span className="flex items-center gap-2 text-xs">
+                  <span
+                    className={selected ? "font-bold text-white" : "text-white/70"}
+                  >
+                    {th.label[form.locale]}
+                  </span>
+                  {selected && <span className="text-blush">✓</span>}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+
+        <p className="text-xs leading-6 text-white/45">
+          تم فقط ظاهرِ صفحه‌ای است که <b className="text-white/70">طرف مقابل</b>{" "}
+          می‌بیند: رنگ‌ها، شکل‌های شناور و ایموجی‌ها. پنل ادمین عوض نمی‌شود.
+          بعد از ذخیره، با دکمهٔ «پیش‌نمایش» ببینش.
         </p>
       </div>
 

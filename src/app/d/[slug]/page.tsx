@@ -42,6 +42,8 @@ export default async function InvitePage({
     // دعوت‌هایی که پیش از افزوده شدن این ستون ساخته شده‌اند مقدار پیش‌فرض
     // دیتابیس را دارند، ولی اگر به هر دلیل چیز دیگری آنجا بود به fa برمی‌گردیم.
     locale: isLocale(invite.locale) ? invite.locale : "fa",
+    // اعتبارسنجی خودِ تم داخل resolveTheme انجام می‌شود
+    theme: invite.theme,
     headline: invite.headline,
     closingNote: invite.closingNote,
     questions: invite.questions.map((q) => ({

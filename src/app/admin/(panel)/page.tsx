@@ -49,6 +49,7 @@ export default async function AdminHome() {
                 slug: invite.slug,
                 recipientName: invite.recipientName,
                 locale: isLocale(invite.locale) ? invite.locale : "fa",
+                theme: invite.theme,
                 active: invite.active,
                 views: invite.views,
                 createdAt: invite.createdAt.toISOString(),

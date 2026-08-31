@@ -11,6 +11,7 @@ import {
   formatGregorian,
   formatJalali,
 } from "@/lib/i18n";
+import { resolveTheme } from "@/lib/themes";
 import type { AnswerRecord, Locale, QuestionType } from "@/lib/types";
 
 export type FlowQuestion = {
@@ -25,6 +26,7 @@ export type FlowInvite = {
   recipientName: string;
   senderName: string;
   locale: Locale;
+  theme: string;
   headline: string;
   closingNote: string;
   questions: FlowQuestion[];
@@ -33,6 +35,18 @@ export type FlowInvite = {
 export default function InviteFlow({ invite }: { invite: FlowInvite }) {
   const t = STRINGS[invite.locale];
   const dir = DIRECTION[invite.locale];
+  const theme = resolveTheme(invite.theme);
+
+  /**
+   * رنگ‌های تم به‌صورت متغیر CSS روی کانتینر هر مرحله می‌نشینند. کلاس‌های
+   * تیلویند (`text-blush`، `bg-card/70` و …) همین متغیرها را می‌خوانند، پس
+   * کل صفحه با عوض شدن تم رنگ عوض می‌کند بدون اینکه کلاسی تغییر کند.
+   * پس‌زمینه هم اینجا می‌آید تا گرادیانِ پیش‌فرضِ body را بپوشاند.
+   */
+  const themeStyle = {
+    ...theme.vars,
+    background: theme.background,
+  } as React.CSSProperties;
   const cardRef = useRef<HTMLDivElement>(null);
   /**
    * زمان آخرین جاخالیِ دکمهٔ «نه». چون «نه» کنار «بله» می‌ماند، وقتی کنار
@@ -144,17 +158,20 @@ export default function InviteFlow({ invite }: { invite: FlowInvite }) {
       <div
         dir={dir}
         lang={invite.locale}
+        style={themeStyle}
         className="relative grid min-h-dvh place-items-center overflow-hidden px-5 py-10"
       >
         <Orbs />
-        <Hearts variant="ambient" />
+        <Hearts variant="ambient" glyphs={theme.ambientGlyphs} />
         <div
           ref={cardRef}
           className={`${card} animate-pop-in relative z-10 overflow-hidden text-center`}
         >
-          <HeartBurst bursts={bursts} />
+          <HeartBurst bursts={bursts} glyphs={theme.burstGlyphs} />
 
-          <p className="animate-heartbeat text-4xl leading-none">💗</p>
+          <p className="animate-heartbeat text-4xl leading-none">
+            {theme.heroEmoji}
+          </p>
 
           <p className="mt-3 text-sm text-white/55">
             {t.intro(invite.recipientName, invite.senderName)}
@@ -215,10 +232,11 @@ export default function InviteFlow({ invite }: { invite: FlowInvite }) {
       <div
         dir={dir}
         lang={invite.locale}
+        style={themeStyle}
         className="relative grid min-h-dvh place-items-center overflow-hidden px-5 py-10"
       >
         <Orbs />
-        <Hearts variant="ambient" count={7} />
+        <Hearts variant="ambient" count={7} glyphs={theme.ambientGlyphs} />
         <div
           key={question.step}
           className={`${card} animate-pop-in relative z-10`}
@@ -316,16 +334,19 @@ export default function InviteFlow({ invite }: { invite: FlowInvite }) {
     <div
       dir={dir}
       lang={invite.locale}
+      style={themeStyle}
       className="relative grid min-h-dvh place-items-center overflow-hidden px-5 py-10"
     >
       <Orbs />
-      <Hearts variant="celebrate" />
+      <Hearts variant="celebrate" glyphs={theme.celebrateGlyphs} />
       <div
         ref={doneCardRef}
         className={`${card} animate-pop-in relative z-10 overflow-hidden text-center`}
       >
-        <HeartBurst bursts={bursts} />
-        <p className="animate-heartbeat text-5xl leading-none">🌹</p>
+        <HeartBurst bursts={bursts} glyphs={theme.burstGlyphs} />
+        <p className="animate-heartbeat text-5xl leading-none">
+          {theme.finaleEmoji}
+        </p>
         <h2 className="mt-4 text-3xl font-black text-blush">{t.doneTitle}</h2>
         <p className="mt-2 text-sm text-white/65">
           {t.doneSubtitle(invite.recipientName)}

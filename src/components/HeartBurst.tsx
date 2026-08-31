@@ -11,10 +11,10 @@ export type Burst = {
   big?: boolean;
 };
 
-const GLYPHS = ["❤", "💖", "💕", "✨"];
+const FALLBACK_GLYPHS = ["❤", "💖", "💕", "✨"];
 
 /** چند قلب که از یک نقطه به بیرون می‌پاشند و محو می‌شوند. */
-function OneBurst({ burst }: { burst: Burst }) {
+function OneBurst({ burst, glyphs }: { burst: Burst; glyphs: string[] }) {
   const pieces = useMemo(() => {
     const count = burst.big ? 14 : 6;
     const spread = burst.big ? 130 : 66;
@@ -28,11 +28,11 @@ function OneBurst({ burst }: { burst: Burst }) {
         dy: `${Math.sin(angle) * distance - 14}px`,
         rot: `${(Math.random() - 0.5) * 120}deg`,
         size: `${(burst.big ? 16 : 12) + Math.random() * (burst.big ? 16 : 8)}px`,
-        glyph: GLYPHS[Math.floor(Math.random() * GLYPHS.length)],
+        glyph: glyphs[Math.floor(Math.random() * glyphs.length)],
         delay: `${Math.random() * 90}ms`,
       };
     });
-  }, [burst.big]);
+  }, [burst.big, glyphs]);
 
   return (
     <>
@@ -63,11 +63,19 @@ function OneBurst({ burst }: { burst: Burst }) {
  *
  * پاک کردنِ پاشش‌های تمام‌شده کارِ والد است؛ این کامپوننت فقط رسم می‌کند.
  */
-export default function HeartBurst({ bursts }: { bursts: Burst[] }) {
+export default function HeartBurst({
+  bursts,
+  glyphs,
+}: {
+  bursts: Burst[];
+  /** شکل‌های تم؛ اگر داده نشود قلب‌های پیش‌فرض */
+  glyphs?: string[];
+}) {
+  const list = glyphs?.length ? glyphs : FALLBACK_GLYPHS;
   return (
     <div aria-hidden className="pointer-events-none absolute inset-0 z-30">
       {bursts.map((b) => (
-        <OneBurst key={b.id} burst={b} />
+        <OneBurst key={b.id} burst={b} glyphs={list} />
       ))}
     </div>
   );

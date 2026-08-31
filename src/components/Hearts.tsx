@@ -2,10 +2,6 @@
 
 import { useMemo } from "react";
 
-/** شکل‌هایی که شناور می‌شوند. صفحهٔ پایانی تنوع بیشتری می‌گیرد. */
-const AMBIENT_GLYPHS = ["❤", "♥"];
-const CELEBRATE_GLYPHS = ["❤", "💖", "💕", "🌹", "✨", "💞"];
-
 type Variant = "ambient" | "celebrate";
 
 /**
@@ -21,9 +17,12 @@ type Variant = "ambient" | "celebrate";
 export default function Hearts({
   variant = "ambient",
   count,
+  glyphs: glyphList,
 }: {
   variant?: Variant;
   count?: number;
+  /** شکل‌های تم؛ اگر داده نشود قلب سادهٔ پیش‌فرض */
+  glyphs?: string[];
 }) {
   const total = count ?? (variant === "celebrate" ? 26 : 10);
 
@@ -31,7 +30,7 @@ export default function Hearts({
     () =>
       Array.from({ length: total }, (_, i) => {
         const celebrate = variant === "celebrate";
-        const glyphs = celebrate ? CELEBRATE_GLYPHS : AMBIENT_GLYPHS;
+        const glyphs = glyphList?.length ? glyphList : ["❤"];
         return {
           id: i,
           glyph: glyphs[Math.floor(Math.random() * glyphs.length)],
@@ -43,7 +42,7 @@ export default function Hearts({
           peak: celebrate ? 0.95 : 0.3,
         };
       }),
-    [total, variant]
+    [total, variant, glyphList]
   );
 
   return (

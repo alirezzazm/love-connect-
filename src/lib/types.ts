@@ -14,6 +14,8 @@ export type InviteInput = {
   recipientName: string;
   senderName: string;
   locale: Locale;
+  /** شناسهٔ تم ظاهری؛ مقادیر مجاز در lib/themes.ts */
+  theme: string;
   headline: string;
   closingNote: string;
   active: boolean;

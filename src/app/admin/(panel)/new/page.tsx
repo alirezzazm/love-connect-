@@ -5,6 +5,7 @@ import {
   DEFAULT_HEADLINE,
   DEFAULT_QUESTIONS,
 } from "@/lib/defaults";
+import { DEFAULT_THEME } from "@/lib/themes";
 
 export default function NewInvitePage() {
   return (
@@ -19,6 +20,7 @@ export default function NewInvitePage() {
           recipientName: "",
           senderName: "",
           locale: "fa",
+          theme: DEFAULT_THEME,
           headline: DEFAULT_HEADLINE.fa,
           closingNote: DEFAULT_CLOSING_NOTE.fa,
           active: true,

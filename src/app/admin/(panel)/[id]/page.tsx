@@ -10,6 +10,7 @@ import {
   formatDualDateTime,
   isLocale,
 } from "@/lib/i18n";
+import { resolveTheme } from "@/lib/themes";
 import type { AnswerRecord, QuestionType } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
@@ -57,6 +58,14 @@ export default async function InviteDetailPage({
         <span className="rounded-full border border-white/15 px-2.5 py-0.5 text-white/70">
           {LOCALE_LABEL[locale]}
         </span>
+        <span className="flex items-center gap-1.5 rounded-full border border-white/15 px-2.5 py-0.5 text-white/70">
+          <span
+            aria-hidden
+            className="h-2.5 w-2.5 rounded-full"
+            style={{ background: resolveTheme(invite.theme).swatch[0] }}
+          />
+          {resolveTheme(invite.theme).label[locale]}
+        </span>
         <span>
           {invite.views} بازدید — ساخته‌شده در{" "}
           {formatDualDateOnly(invite.createdAt)}
@@ -101,6 +110,7 @@ export default async function InviteDetailPage({
           recipientName: invite.recipientName,
           senderName: invite.senderName,
           locale,
+          theme: resolveTheme(invite.theme).id,
           headline: invite.headline,
           closingNote: invite.closingNote,
           active: invite.active,
